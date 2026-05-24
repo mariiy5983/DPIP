@@ -62,8 +62,14 @@ class MapPage extends StatefulWidget {
   /// Optional configuration controlling the initial layer and report state.
   final MapPageOptions? options;
 
+  /// Whether to display the floating back button on the top-left.
+  ///
+  /// Set to `false` when embedding the map as a shell tab where the bottom
+  /// nav already provides navigation.
+  final bool showBackButton;
+
   /// Creates a [MapPage] with optional [options].
-  const MapPage({super.key, this.options});
+  const MapPage({super.key, this.options, this.showBackButton = true});
 
   /// Returns the route path for this page, including any query parameters
   /// derived from [options].
@@ -367,7 +373,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             onLayerChanged: toggleLayer,
             onBaseMapChanged: setBaseMapType,
           ),
-          PositionedBackButton(onPressed: _handleBack),
+          if (widget.showBackButton) PositionedBackButton(onPressed: _handleBack),
           ..._activeLayers.map((layer) {
             final manager = _managers[layer];
             if (manager != null) {

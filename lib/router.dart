@@ -1,10 +1,7 @@
 import 'package:dpip/app/changelog/page.dart';
 import 'package:dpip/app/debug/logs/page.dart';
-import 'package:dpip/app/home/layout.dart';
-import 'package:dpip/app/home/page.dart';
-import 'package:dpip/app/new_home/layout.dart';
-import 'package:dpip/app/new_home/page.dart';
 import 'package:dpip/app/map/page.dart';
+import 'package:dpip/app/new_home/layout.dart';
 import 'package:dpip/app/settings/donate/page.dart';
 import 'package:dpip/app/settings/experimental/page.dart';
 import 'package:dpip/app/settings/layout.dart';
@@ -36,7 +33,6 @@ import 'package:dpip/app/welcome/2-exptech/page.dart';
 import 'package:dpip/app/welcome/3-notice/page.dart';
 import 'package:dpip/app/welcome/4-permissions/page.dart';
 import 'package:dpip/core/preference.dart';
-import 'package:dpip/models/settings/experimental.dart';
 import 'package:dpip/route/announcement/announcement.dart';
 import 'package:dpip/utils/log.dart';
 import 'package:dpip/widgets/shell_wrapper.dart';
@@ -99,19 +95,30 @@ class WelcomePermissionsRoute extends GoRouteData with $WelcomePermissionsRoute 
   }
 }
 
-/// Home route - displays the main application home page.
+/// Home route - displays the main shell with all bottom-nav tabs.
+///
+/// Use the optional `tab` query parameter for deep-linking into a specific
+/// tab: `/home?tab=events`, `/home?tab=weather`, `/home?tab=map`, or
+/// `/home?tab=menu`. Defaults to the home tab.
 @TypedGoRoute<HomeRoute>(path: '/home')
 class HomeRoute extends GoRouteData with $HomeRoute {
-  /// Creates a [HomeRoute].
-  const HomeRoute();
+  /// Optional tab name for deep-linking.
+  final String? tab;
+
+  /// Creates a [HomeRoute] optionally targeting a specific tab.
+  const HomeRoute({this.tab});
+
+  static int _tabIndex(String? tab) => switch (tab) {
+        'events' => tabEvents,
+        'map' => tabMap,
+        'weather' => tabWeather,
+        'menu' => tabMenu,
+        _ => tabHome,
+      };
 
   @override
   Widget build(BuildContext context, GoRouterState state) {
-    if (context.experimental.experimental__newHomeScreen) {
-      return const Material(child: NewHomeLayout(child: NewHomePage()));
-    }
-
-    return const Material(child: HomeLayout(child: HomePage()));
+    return Material(child: NewHomeShell(initialTab: _tabIndex(tab)));
   }
 }
 

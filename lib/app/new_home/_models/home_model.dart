@@ -3,9 +3,12 @@ library;
 
 import 'dart:async';
 
+import 'package:collection/collection.dart';
+import 'package:dpip/api/model/history/history.dart';
 import 'package:dpip/api/model/weather_schema.dart';
 import 'package:dpip/global.dart';
 import 'package:dpip/models/settings/location.dart';
+import 'package:dpip/utils/log.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -23,6 +26,8 @@ class HomeModel extends ChangeNotifier {
   final SettingsLocationModel _settingsLocation;
   String? _temporaryCode;
   RealtimeWeather? _weather;
+  List<History> _alerts = const [];
+  Map<String, dynamic>? _forecast;
   bool _isLoading = false;
   Object? _error;
   Timer? _autoRefreshTimer;
@@ -60,19 +65,52 @@ class HomeModel extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    try {
-      _weather = await Global.api.getWeatherRealtimeByCoords(lat, lon);
-      _error = null;
-    } catch (e) {
-      _error = e;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    // Fetch weather + alerts + forecast in parallel.
+    final results = await Future.wait<Object?>([
+      Global.api.getWeatherRealtimeByCoords(lat, lon).then<Object?>((v) => v).catchError((e) {
+        TalkerManager.instance.error('HomeModel weather', e);
+        return null;
+      }),
+      code == null
+          ? Future<Object?>.value(null)
+          : Global.api.getRealtimeRegion(code).then<Object?>((v) => v).catchError((e) {
+              TalkerManager.instance.error('HomeModel alerts', e);
+              return null;
+            }),
+      code == null
+          ? Future<Object?>.value(null)
+          : Global.api.getWeatherForecast(code).then<Object?>((v) => v).catchError((e) {
+              TalkerManager.instance.error('HomeModel forecast', e);
+              return null;
+            }),
+    ]);
+
+    final weather = results[0];
+    final alerts = results[1];
+    final forecast = results[2];
+
+    _weather = weather is RealtimeWeather ? weather : _weather;
+    _alerts = alerts is List<History>
+        ? alerts.sorted((a, b) => b.time.send.compareTo(a.time.send))
+        : const [];
+    _forecast = forecast is Map<String, dynamic> ? forecast : _forecast;
+    _error = (weather == null && _weather == null) ? Exception('weather fetch failed') : null;
+    _isLoading = false;
+    notifyListeners();
   }
 
   /// The most recently fetched weather data, or `null` if not yet loaded.
   RealtimeWeather? get weather => _weather;
+
+  /// The most recent realtime alerts for the active location, sorted newest first.
+  List<History> get alerts => _alerts;
+
+  /// The most recent thunderstorm alert, or `null` when none active.
+  History? get thunderstorm =>
+      _alerts.firstWhereOrNull((e) => e.type == HistoryType.thunderstorm);
+
+  /// The 24-hour weather forecast for the active location, or `null` if missing.
+  Map<String, dynamic>? get forecast => _forecast;
 
   /// Whether a weather fetch is currently in progress.
   bool get isLoading => _isLoading;
