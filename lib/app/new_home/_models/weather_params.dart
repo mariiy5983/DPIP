@@ -56,6 +56,16 @@ double windWeight(RealtimeWeatherData? d) {
   return (d.wind.beaufort / 8.0).clamp(0.0, 1.0);
 }
 
+/// Time-of-day salutation for the given [hour] (0–23, local time).
+///
+/// Used in both the top-of-page [Greeting] and the [AssistantHint] hint text.
+String greetingForHour(int hour) => switch (hour) {
+      < 6 => '夜深了',
+      < 12 => '早安',
+      < 18 => '午安',
+      _ => '晚安',
+    };
+
 /// Solar phase in `[0, 1]` across the visible window from 5am to 7pm.
 ///
 /// `0.0` ≈ sunrise at the eastern edge, `0.5` ≈ noon overhead,

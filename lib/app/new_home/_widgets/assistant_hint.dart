@@ -2,6 +2,7 @@
 library;
 
 import 'package:dpip/app/new_home/_models/home_model.dart';
+import 'package:dpip/app/new_home/_models/weather_params.dart';
 import 'package:dpip/utils/extensions/build_context.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
@@ -59,14 +60,7 @@ class AssistantHint extends StatelessWidget {
 }
 
 String _buildHintText(double temperature, String weather) {
-  final hour = DateTime.now().hour;
-
-  final greeting = switch (hour) {
-    < 6 => '夜深了',
-    < 12 => '早安',
-    < 18 => '午安',
-    _ => '晚安',
-  };
+  final greeting = greetingForHour(DateTime.now().hour);
 
   final tempComment = switch (temperature) {
     < 10 => '天氣寒冷，注意保暖。',

@@ -308,4 +308,10 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 }

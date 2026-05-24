@@ -16,6 +16,9 @@ import 'package:i18n_extension/i18n_extension.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+/// Foreground/border alpha for the muted onErrorContainer text style.
+const double _mutedAlpha = 0.7;
+
 /// Displays the active EEW alert(s) as compact tappable cards.
 ///
 /// Renders nothing when no EEW is active. Tap navigates to the monitor map.
@@ -33,7 +36,7 @@ class EewAlerts extends StatelessWidget {
           padding: const .symmetric(horizontal: 12),
           child: Column(
             mainAxisSize: .min,
-            children: eews.map((e) => _EewCard(eew: e)).toList(),
+            children: [for (final e in eews) _EewCard(eew: e)],
           ),
         );
       },
@@ -56,8 +59,9 @@ class _EewCardState extends State<_EewCard> {
   Timer? _ticker;
 
   void _tick() {
-    if (_arrivalMs == null) return;
-    final remaining = ((_arrivalMs! - GlobalProviders.data.currentTime) / 1000).floor();
+    final arrival = _arrivalMs;
+    if (arrival == null) return;
+    final remaining = ((arrival - GlobalProviders.data.currentTime) / 1000).floor();
     if (remaining < -1) return;
     if (mounted && remaining != _countdown) setState(() => _countdown = remaining);
   }
@@ -87,9 +91,10 @@ class _EewCardState extends State<_EewCard> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final onContainer = colors.onErrorContainer;
+    final muted = onContainer.withValues(alpha: _mutedAlpha);
     final eq = widget.eew.info;
     final intensity = _localIntensity;
-    final arrived = _countdown <= 0;
 
     return Padding(
       padding: const .symmetric(vertical: 4),
@@ -98,7 +103,7 @@ class _EewCardState extends State<_EewCard> {
         clipBehavior: Clip.antiAlias,
         borderRadius: .circular(24),
         child: InkWell(
-          onTap: () => MapRoute(layers: 'monitor').push(context),
+          onTap: () => const MapRoute(layers: 'monitor').push(context),
           splashColor: colors.error.withValues(alpha: 0.18),
           child: Ink(
             decoration: BoxDecoration(
@@ -128,47 +133,12 @@ class _EewCardState extends State<_EewCard> {
               mainAxisSize: .min,
               crossAxisAlignment: .start,
               children: [
-                Row(
-                  spacing: 8,
-                  children: [
-                    Container(
-                      padding: const .symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colors.error,
-                        borderRadius: .circular(999),
-                      ),
-                      child: Row(
-                        mainAxisSize: .min,
-                        spacing: 4,
-                        children: [
-                          Icon(Symbols.crisis_alert_rounded,
-                              color: colors.onError, size: 16, weight: 700),
-                          Text('EEW'.i18n,
-                              style: context.texts.labelMedium?.copyWith(
-                                color: colors.onError,
-                                fontWeight: .w800,
-                              )),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        '第 {serial} 報'.i18n.args({'serial': widget.eew.serial}),
-                        style: context.texts.labelLarge?.copyWith(
-                          color: colors.onErrorContainer,
-                          fontWeight: .w600,
-                        ),
-                      ),
-                    ),
-                    Icon(Symbols.chevron_right_rounded,
-                        color: colors.onErrorContainer),
-                  ],
-                ),
+                _Header(serial: widget.eew.serial, onContainer: onContainer, error: colors.error, onError: colors.onError),
                 const SizedBox(height: 12),
                 Text(
                   eq.location,
                   style: context.texts.titleLarge?.copyWith(
-                    color: colors.onErrorContainer,
+                    color: onContainer,
                     fontWeight: .w700,
                   ),
                 ),
@@ -176,93 +146,52 @@ class _EewCardState extends State<_EewCard> {
                 Row(
                   spacing: 8,
                   children: [
-                    _Chip(
-                      label: 'M ${eq.magnitude.toStringAsFixed(1)}',
-                      color: colors.onErrorContainer,
-                    ),
-                    _Chip(
-                      label: '${eq.depth.toStringAsFixed(0)} km',
-                      color: colors.onErrorContainer,
-                    ),
+                    _Chip(label: 'M ${eq.magnitude.toStringAsFixed(1)}', color: onContainer),
+                    _Chip(label: '${eq.depth.toStringAsFixed(0)} km', color: onContainer),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: .end,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: .start,
-                        children: [
-                          Text(
-                            '所在地預估'.i18n,
-                            style: context.texts.labelMedium?.copyWith(
-                              color: colors.onErrorContainer.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          Text(
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: .stretch,
+                    children: [
+                      Expanded(
+                        child: _InfoBlock(
+                          label: '所在地預估'.i18n,
+                          muted: muted,
+                          child: Text(
                             intensity?.asIntensityLabel ?? '—',
                             style: context.texts.displaySmall?.copyWith(
-                              color: colors.onErrorContainer,
+                              color: onContainer,
                               fontWeight: .w800,
                               height: 1.0,
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    Container(
-                      width: 1,
-                      height: 56,
-                      color: colors.onErrorContainer.withValues(alpha: 0.25),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: .end,
-                        children: [
-                          Text(
-                            '震波抵達'.i18n,
-                            style: context.texts.labelMedium?.copyWith(
-                              color: colors.onErrorContainer.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          if (arrived)
-                            Text(
-                              '抵達'.i18n,
-                              style: context.texts.displaySmall?.copyWith(
-                                color: colors.onErrorContainer,
-                                fontWeight: .w800,
-                                height: 1.0,
-                              ),
-                            )
-                          else
-                            Row(
-                              mainAxisAlignment: .end,
-                              crossAxisAlignment: .baseline,
-                              textBaseline: TextBaseline.alphabetic,
-                              children: [
-                                Text(
-                                  '$_countdown',
-                                  style: context.texts.displayMedium?.copyWith(
-                                    color: colors.onErrorContainer,
+                      VerticalDivider(
+                        color: onContainer.withValues(alpha: 0.25),
+                        width: 24,
+                      ),
+                      Expanded(
+                        child: _InfoBlock(
+                          label: '震波抵達'.i18n,
+                          align: .end,
+                          muted: muted,
+                          child: _countdown <= 0
+                              ? Text(
+                                  '抵達'.i18n,
+                                  style: context.texts.displaySmall?.copyWith(
+                                    color: onContainer,
                                     fontWeight: .w800,
                                     height: 1.0,
                                   ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '秒'.i18n,
-                                  style: context.texts.titleMedium?.copyWith(
-                                    color: colors.onErrorContainer.withValues(alpha: 0.7),
-                                  ),
-                                ),
-                              ],
-                            ),
-                        ],
+                                )
+                              : _Countdown(seconds: _countdown, onContainer: onContainer, muted: muted),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -276,6 +205,118 @@ class _EewCardState extends State<_EewCard> {
   void dispose() {
     _ticker?.cancel();
     super.dispose();
+  }
+}
+
+class _Header extends StatelessWidget {
+  final int serial;
+  final Color onContainer;
+  final Color error;
+  final Color onError;
+
+  const _Header({
+    required this.serial,
+    required this.onContainer,
+    required this.error,
+    required this.onError,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      spacing: 8,
+      children: [
+        Container(
+          padding: const .symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(color: error, borderRadius: .circular(999)),
+          child: Row(
+            mainAxisSize: .min,
+            spacing: 4,
+            children: [
+              Icon(Symbols.crisis_alert_rounded, color: onError, size: 16, weight: 700),
+              Text(
+                'EEW'.i18n,
+                style: context.texts.labelMedium?.copyWith(
+                  color: onError,
+                  fontWeight: .w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Text(
+            '第 {serial} 報'.i18n.args({'serial': serial}),
+            style: context.texts.labelLarge?.copyWith(
+              color: onContainer,
+              fontWeight: .w600,
+            ),
+          ),
+        ),
+        Icon(Symbols.chevron_right_rounded, color: onContainer),
+      ],
+    );
+  }
+}
+
+class _InfoBlock extends StatelessWidget {
+  final String label;
+  final Widget child;
+  final Color muted;
+  final CrossAxisAlignment align;
+
+  const _InfoBlock({
+    required this.label,
+    required this.child,
+    required this.muted,
+    this.align = .start,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: align,
+      children: [
+        Text(label, style: context.texts.labelMedium?.copyWith(color: muted)),
+        child,
+      ],
+    );
+  }
+}
+
+class _Countdown extends StatelessWidget {
+  final int seconds;
+  final Color onContainer;
+  final Color muted;
+
+  const _Countdown({
+    required this.seconds,
+    required this.onContainer,
+    required this.muted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: .end,
+      crossAxisAlignment: .baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(
+          '$seconds',
+          style: context.texts.displayMedium?.copyWith(
+            color: onContainer,
+            fontWeight: .w800,
+            height: 1.0,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          '秒'.i18n,
+          style: context.texts.titleMedium?.copyWith(color: muted),
+        ),
+      ],
+    );
   }
 }
 

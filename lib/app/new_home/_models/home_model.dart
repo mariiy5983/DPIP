@@ -28,8 +28,6 @@ class HomeModel extends ChangeNotifier {
   RealtimeWeather? _weather;
   List<History> _alerts = const [];
   Map<String, dynamic>? _forecast;
-  bool _isLoading = false;
-  Object? _error;
   Timer? _autoRefreshTimer;
 
   /// Creates a [HomeModel] backed by [settingsLocation].
@@ -44,58 +42,35 @@ class HomeModel extends ChangeNotifier {
     if (_temporaryCode == null) _doRefresh();
   }
 
+  /// Runs [task] and logs failures under [tag]; returns `null` on error.
+  static Future<T?> _safe<T>(String tag, Future<T> Function() task) async {
+    try {
+      return await task();
+    } catch (e) {
+      TalkerManager.instance.error('HomeModel $tag', e);
+      return null;
+    }
+  }
+
   Future<void> _doRefresh() async {
     final code = _temporaryCode ?? _settingsLocation.code;
-    double? lat;
-    double? lon;
-
-    if (code != null) {
-      final loc = Global.location[code];
-      if (loc != null) {
-        lat = loc.lat;
-        lon = loc.lng;
-      }
-    }
-
-    lat ??= _settingsLocation.coordinates?.latitude;
-    lon ??= _settingsLocation.coordinates?.longitude;
-
+    final loc = code != null ? Global.location[code] : null;
+    final lat = loc?.lat ?? _settingsLocation.coordinates?.latitude;
+    final lon = loc?.lng ?? _settingsLocation.coordinates?.longitude;
     if (lat == null || lon == null) return;
-
-    _isLoading = true;
-    notifyListeners();
 
     // Fetch weather + alerts + forecast in parallel.
     final results = await Future.wait<Object?>([
-      Global.api.getWeatherRealtimeByCoords(lat, lon).then<Object?>((v) => v).catchError((e) {
-        TalkerManager.instance.error('HomeModel weather', e);
-        return null;
-      }),
-      code == null
-          ? Future<Object?>.value(null)
-          : Global.api.getRealtimeRegion(code).then<Object?>((v) => v).catchError((e) {
-              TalkerManager.instance.error('HomeModel alerts', e);
-              return null;
-            }),
-      code == null
-          ? Future<Object?>.value(null)
-          : Global.api.getWeatherForecast(code).then<Object?>((v) => v).catchError((e) {
-              TalkerManager.instance.error('HomeModel forecast', e);
-              return null;
-            }),
+      _safe('weather', () => Global.api.getWeatherRealtimeByCoords(lat, lon)),
+      if (code != null) _safe('alerts', () => Global.api.getRealtimeRegion(code)) else Future.value(null),
+      if (code != null) _safe('forecast', () => Global.api.getWeatherForecast(code)) else Future.value(null),
     ]);
 
-    final weather = results[0];
-    final alerts = results[1];
-    final forecast = results[2];
-
-    _weather = weather is RealtimeWeather ? weather : _weather;
-    _alerts = alerts is List<History>
-        ? alerts.sorted((a, b) => b.time.send.compareTo(a.time.send))
+    if (results[0] is RealtimeWeather) _weather = results[0] as RealtimeWeather;
+    _alerts = results[1] is List<History>
+        ? (results[1]! as List<History>).sorted((a, b) => b.time.send.compareTo(a.time.send))
         : const [];
-    _forecast = forecast is Map<String, dynamic> ? forecast : _forecast;
-    _error = (weather == null && _weather == null) ? Exception('weather fetch failed') : null;
-    _isLoading = false;
+    if (results[2] is Map<String, dynamic>) _forecast = results[2] as Map<String, dynamic>;
     notifyListeners();
   }
 
@@ -111,12 +86,6 @@ class HomeModel extends ChangeNotifier {
 
   /// The 24-hour weather forecast for the active location, or `null` if missing.
   Map<String, dynamic>? get forecast => _forecast;
-
-  /// Whether a weather fetch is currently in progress.
-  bool get isLoading => _isLoading;
-
-  /// The error from the last failed fetch, or `null` when the last fetch succeeded.
-  Object? get error => _error;
 
   /// The currently active temporary location code, or `null` when unset.
   String? get temporaryCode => _temporaryCode;
