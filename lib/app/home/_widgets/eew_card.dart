@@ -45,6 +45,22 @@ class _EewCardState extends State<EewCard> {
 
   Timer? _timer;
 
+  String _buildAlertText() {
+    final info = widget.data.info;
+    final commonArgs = {
+      'time': info.time.toSimpleDateTimeString(),
+      'location': info.location,
+      'magnitude': info.magnitude.toStringAsFixed(1),
+    };
+    return localIntensity != null
+        ? '{time} 左右，<bold>{location}</bold>附近發生有感地震，預估規模 <bold>M{magnitude}</bold>、所在地最大震度<bold>{intensity}</bold>。'
+              .i18n
+              .args({...commonArgs, 'intensity': localIntensity!.asIntensityLabel})
+        : '{time} 左右，<bold>{location}</bold>附近發生有感地震，預估規模 <bold>M{magnitude}</bold>、深度<bold>{depth}</bold>公里。'
+              .i18n
+              .args({...commonArgs, 'depth': info.depth.toStringAsFixed(1)});
+  }
+
   void _updateCountdown() {
     if (localArrivalTime == null) return;
 
@@ -152,23 +168,7 @@ class _EewCardState extends State<EewCard> {
                   Padding(
                     padding: const .only(top: 8),
                     child: StyledText(
-                      text: localIntensity != null
-                          ? '{time} 左右，<bold>{location}</bold>附近發生有感地震，預估規模 <bold>M{magnitude}</bold>、所在地最大震度<bold>{intensity}</bold>。'
-                                .i18n
-                                .args({
-                                  'time': widget.data.info.time.toSimpleDateTimeString(),
-                                  'location': widget.data.info.location,
-                                  'magnitude': widget.data.info.magnitude.toStringAsFixed(1),
-                                  'intensity': localIntensity!.asIntensityLabel,
-                                })
-                          : '{time} 左右，<bold>{location}</bold>附近發生有感地震，預估規模 <bold>M{magnitude}</bold>、深度<bold>{depth}</bold>公里。'
-                                .i18n
-                                .args({
-                                  'time': widget.data.info.time.toSimpleDateTimeString(),
-                                  'location': widget.data.info.location,
-                                  'magnitude': widget.data.info.magnitude.toStringAsFixed(1),
-                                  'depth': widget.data.info.depth.toStringAsFixed(1),
-                                }),
+                      text: _buildAlertText(),
                       style: context.texts.bodyLarge!.copyWith(
                         color: context.colors.onErrorContainer,
                       ),

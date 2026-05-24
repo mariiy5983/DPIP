@@ -104,6 +104,7 @@ class ModeToggleButton extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: .circular(16)),
       elevation: 8,
       items: HomeMode.values.map((mode) {
+        final isSelected = currentMode == mode;
         return PopupMenuItem<HomeMode>(
           value: mode,
           child: Row(
@@ -112,15 +113,13 @@ class ModeToggleButton extends StatelessWidget {
               Icon(
                 mode.icon,
                 size: 20,
-                color: currentMode == mode
-                    ? context.colors.primary
-                    : context.colors.onSurfaceVariant,
+                color: isSelected ? context.colors.primary : context.colors.onSurfaceVariant,
               ),
               Text(
                 mode.label,
                 style: context.texts.bodyMedium?.copyWith(
-                  color: currentMode == mode ? context.colors.primary : context.colors.onSurface,
-                  fontWeight: currentMode == mode ? .bold : .normal,
+                  color: isSelected ? context.colors.primary : context.colors.onSurface,
+                  fontWeight: isSelected ? .bold : .normal,
                 ),
               ),
             ],

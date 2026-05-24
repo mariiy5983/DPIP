@@ -36,10 +36,7 @@ class _ChangelogPageState extends State<ChangelogPage> {
   Result<List<GithubRelease>, String>? releases;
 
   Future<void> _refresh() async {
-    if (_refreshIndicatorKey.currentState case final state?) {
-      state.show();
-    }
-
+    _refreshIndicatorKey.currentState?.show();
     final result = await ExpTech().getReleases();
     setState(() => releases = result);
   }
@@ -181,14 +178,8 @@ class _ReleaseHeaderDelegate extends SliverPersistentHeaderDelegate {
         spacing: 16,
         children: [
           ContainedIcon(
-            switch (release.prerelease) {
-              true => Symbols.experiment_rounded,
-              false => Symbols.package_2_rounded,
-            },
-            color: switch (release.prerelease) {
-              true => Colors.orangeAccent,
-              false => Colors.greenAccent,
-            },
+            release.prerelease ? Symbols.experiment_rounded : Symbols.package_2_rounded,
+            color: release.prerelease ? Colors.orangeAccent : Colors.greenAccent,
             size: 28,
           ),
           Expanded(

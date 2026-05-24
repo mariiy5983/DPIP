@@ -52,23 +52,23 @@ class Weather extends StatelessWidget {
   }
 }
 
-IconData _weatherIcon(int code) {
-  if (code >= 1 && code <= 3) return Symbols.clear_day_rounded;
-  if (code >= 4 && code <= 7) return Symbols.partly_cloudy_day_rounded;
-  if (code >= 8 && code <= 14) return Symbols.cloud_rounded;
-  if (code >= 15 && code <= 22) return Symbols.rainy_rounded;
-  if (code >= 23 && code <= 28) return Symbols.rainy_heavy_rounded;
-  if (code >= 29 && code <= 35) return Symbols.thunderstorm_rounded;
-  if (code >= 36 && code <= 41) return Symbols.weather_snowy_rounded;
-  return Symbols.foggy_rounded;
-}
+IconData _weatherIcon(int code) => switch (code) {
+  >= 1 && <= 3 => Symbols.clear_day_rounded,
+  >= 4 && <= 7 => Symbols.partly_cloudy_day_rounded,
+  >= 8 && <= 14 => Symbols.cloud_rounded,
+  >= 15 && <= 22 => Symbols.rainy_rounded,
+  >= 23 && <= 28 => Symbols.rainy_heavy_rounded,
+  >= 29 && <= 35 => Symbols.thunderstorm_rounded,
+  >= 36 && <= 41 => Symbols.weather_snowy_rounded,
+  _ => Symbols.foggy_rounded,
+};
 
-Color _weatherIconColor(int code) {
-  if (code >= 1 && code <= 3) return Colors.orangeAccent;
-  if (code >= 4 && code <= 7) return Colors.amber;
-  if (code >= 8 && code <= 14) return Colors.grey;
-  if (code >= 15 && code <= 28) return Colors.blueAccent;
-  if (code >= 29 && code <= 35) return Colors.yellowAccent;
-  if (code >= 36 && code <= 41) return Colors.lightBlue;
-  return Colors.grey;
-}
+Color _weatherIconColor(int code) => switch (code) {
+  >= 1 && <= 3 => Colors.orangeAccent,
+  >= 4 && <= 7 => Colors.amber,
+  >= 8 && <= 14 => Colors.grey,
+  >= 15 && <= 28 => Colors.blueAccent,
+  >= 29 && <= 35 => Colors.yellowAccent,
+  >= 36 && <= 41 => Colors.lightBlue,
+  _ => Colors.grey,
+};

@@ -5,25 +5,27 @@ import 'package:dpip/api/exptech.dart';
 import 'package:dpip/core/preference.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
+const int _kMinUpdateIntervalMs = 86400 * 1000; // 1 day
+
 Future<void> updateInfoToServer() async {
   final latitude = Preference.locationLatitude;
   final longitude = Preference.locationLongitude;
+  if (latitude == null || longitude == null) return;
+
+  final token = Preference.notifyToken;
+  if (token.isEmpty) return;
+
+  final elapsed = DateTime.now().millisecondsSinceEpoch - (Preference.lastUpdateToServerTime ?? 0);
+  if (elapsed <= _kMinUpdateIntervalMs) return;
+
+  // 50% sampling
+  if (Random().nextInt(2) != 0) return;
 
   try {
-    if (latitude == null || longitude == null) return;
-    if (Preference.notifyToken != '' &&
-        DateTime.now().millisecondsSinceEpoch - (Preference.lastUpdateToServerTime ?? 0) >
-            86400 * 1 * 1000) {
-      final random = Random();
-      final int rand = random.nextInt(2);
-
-      if (rand != 0) return;
-
-      ExpTech().updateDeviceLocation(
-        token: Preference.notifyToken,
-        coordinates: LatLng(latitude, longitude),
-      );
-    }
+    ExpTech().updateDeviceLocation(
+      token: token,
+      coordinates: LatLng(latitude, longitude),
+    );
   } catch (e) {
     print('Network info update failed: $e');
   }

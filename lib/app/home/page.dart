@@ -96,36 +96,35 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _measureFirstCard() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cardContext = _firstCardKey.currentContext;
-      if (cardContext != null) {
-        final box = cardContext.findRenderObject() as RenderBox?;
-        if (box != null && box.hasSize) {
-          final height = box.size.height + 28;
-          final isFirstMeasure = _measuredFirstCardHeight == null;
-          if (isFirstMeasure || ((_measuredFirstCardHeight! - height).abs() > 1)) {
-            _sheetController.removeListener(_onSheetChanged);
-            _sheetController.dispose();
+      if (cardContext == null) return;
+      final box = cardContext.findRenderObject() as RenderBox?;
+      if (box == null || !box.hasSize) return;
 
-            setState(() {
-              _measuredFirstCardHeight = height;
-              _sheetKey = UniqueKey();
-              _sheetController = DraggableScrollableController();
-            });
+      final height = box.size.height + 28;
+      final isFirstMeasure = _measuredFirstCardHeight == null;
+      if (!isFirstMeasure && (_measuredFirstCardHeight! - height).abs() <= 1) return;
 
-            _sheetController.addListener(_onSheetChanged);
+      _sheetController.removeListener(_onSheetChanged);
+      _sheetController.dispose();
 
-            if (isFirstMeasure && mounted) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                final screenHeight = context.dimension.height;
-                final targetSize = (height / screenHeight).clamp(0.25, 0.6);
-                _sheetController.animateTo(
-                  targetSize,
-                  duration: const Duration(milliseconds: 350),
-                  curve: Curves.easeOutCubic,
-                );
-              });
-            }
-          }
-        }
+      setState(() {
+        _measuredFirstCardHeight = height;
+        _sheetKey = UniqueKey();
+        _sheetController = DraggableScrollableController();
+      });
+
+      _sheetController.addListener(_onSheetChanged);
+
+      if (isFirstMeasure && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final screenHeight = context.dimension.height;
+          final targetSize = (height / screenHeight).clamp(0.25, 0.6);
+          _sheetController.animateTo(
+            targetSize,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+          );
+        });
       }
     });
   }
@@ -841,25 +840,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               final currentSize = _sheetController.size;
               final velocity = details.primaryVelocity ?? 0;
 
-              double targetSnap;
+              final double targetSnap;
               if (velocity.abs() > 500) {
-                if (velocity > 0) {
-                  targetSnap =
-                      snapSizes.where((s) => s < currentSize).lastOrNull ?? snapSizes.first;
-                } else {
-                  targetSnap =
-                      snapSizes.where((s) => s > currentSize).firstOrNull ?? snapSizes.last;
-                }
+                targetSnap = velocity > 0
+                    ? (snapSizes.where((s) => s < currentSize).lastOrNull ?? snapSizes.first)
+                    : (snapSizes.where((s) => s > currentSize).firstOrNull ?? snapSizes.last);
               } else {
-                targetSnap = snapSizes.first;
-                double minDist = (currentSize - targetSnap).abs();
-                for (final snap in snapSizes) {
-                  final dist = (currentSize - snap).abs();
-                  if (dist < minDist) {
-                    minDist = dist;
-                    targetSnap = snap;
-                  }
-                }
+                targetSnap = snapSizes.reduce(
+                  (a, b) => (currentSize - a).abs() < (currentSize - b).abs() ? a : b,
+                );
               }
 
               _sheetController.animateTo(
@@ -1007,6 +996,11 @@ class _StationChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.theme.brightness == .dark;
+    final borderColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.25);
+    final labelColor = isDark ? Colors.white : const Color.fromARGB(255, 90, 90, 90);
+    final valueColor = isDark ? Colors.white : const Color.fromARGB(255, 60, 60, 60);
+
     return ClipRRect(
       borderRadius: .circular(8),
       child: BackdropFilter(
@@ -1016,12 +1010,7 @@ class _StationChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.15),
             borderRadius: .circular(8),
-            border: Border.all(
-              color: context.theme.brightness == .dark
-                  ? Colors.white.withValues(alpha: 0.25)
-                  : const Color.fromARGB(255, 0, 0, 0).withValues(alpha: 0.25),
-              width: 0.5,
-            ),
+            border: Border.all(color: borderColor, width: 0.5),
           ),
           child: Column(
             mainAxisSize: .min,
@@ -1029,9 +1018,7 @@ class _StationChip extends StatelessWidget {
               Text(
                 label,
                 style: context.texts.labelSmall?.copyWith(
-                  color: context.theme.brightness == .dark
-                      ? Colors.white
-                      : const Color.fromARGB(255, 90, 90, 90),
+                  color: labelColor,
                   fontWeight: .w700,
                   fontSize: 9,
                 ),
@@ -1039,9 +1026,7 @@ class _StationChip extends StatelessWidget {
               Text(
                 value,
                 style: context.texts.bodySmall?.copyWith(
-                  color: context.theme.brightness == .dark
-                      ? Colors.white
-                      : const Color.fromARGB(255, 60, 60, 60),
+                  color: valueColor,
                   fontWeight: .w600,
                   fontSize: 12,
                 ),

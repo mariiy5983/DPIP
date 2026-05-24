@@ -43,15 +43,13 @@ void showErrorToast(BuildContext context) {
   );
 }
 
-/// Calls [setter] with [value], then shows a success or error toast.
-Future setEewNotifyType(
+Future<void> _setNotifyType<T>(
   BuildContext context,
-  EewNotifyType value,
-  Future Function(EewNotifyType value) setter,
+  T value,
+  Future Function(T value) setter,
 ) async {
   try {
     await setter(value);
-
     if (!context.mounted) return;
     showSuccessToast(context);
   } catch (e) {
@@ -59,71 +57,38 @@ Future setEewNotifyType(
     showErrorToast(context);
   }
 }
+
+/// Calls [setter] with [value], then shows a success or error toast.
+Future setEewNotifyType(
+  BuildContext context,
+  EewNotifyType value,
+  Future Function(EewNotifyType value) setter,
+) => _setNotifyType(context, value, setter);
 
 /// Calls [setter] with [value], then shows a success or error toast.
 Future setEarthquakeNotifyType(
   BuildContext context,
   EarthquakeNotifyType value,
   Future Function(EarthquakeNotifyType value) setter,
-) async {
-  try {
-    await setter(value);
-
-    if (!context.mounted) return;
-    showSuccessToast(context);
-  } catch (e) {
-    if (!context.mounted) return;
-    showErrorToast(context);
-  }
-}
+) => _setNotifyType(context, value, setter);
 
 /// Calls [setter] with [value], then shows a success or error toast.
 Future setWeatherNotifyType(
   BuildContext context,
   WeatherNotifyType value,
   Future Function(WeatherNotifyType value) setter,
-) async {
-  try {
-    await setter(value);
-
-    if (!context.mounted) return;
-    showSuccessToast(context);
-  } catch (e) {
-    if (!context.mounted) return;
-    showErrorToast(context);
-  }
-}
+) => _setNotifyType(context, value, setter);
 
 /// Calls [setter] with [value], then shows a success or error toast.
 Future setTsunamiNotifyType(
   BuildContext context,
   TsunamiNotifyType value,
   Future Function(TsunamiNotifyType value) setter,
-) async {
-  try {
-    await setter(value);
-
-    if (!context.mounted) return;
-    showSuccessToast(context);
-  } catch (e) {
-    if (!context.mounted) return;
-    showErrorToast(context);
-  }
-}
+) => _setNotifyType(context, value, setter);
 
 /// Calls [setter] with [value], then shows a success or error toast.
 Future setBasicNotifyType(
   BuildContext context,
   BasicNotifyType value,
   Future Function(BasicNotifyType value) setter,
-) async {
-  try {
-    await setter(value);
-
-    if (!context.mounted) return;
-    showSuccessToast(context);
-  } catch (e) {
-    if (!context.mounted) return;
-    showErrorToast(context);
-  }
-}
+) => _setNotifyType(context, value, setter);

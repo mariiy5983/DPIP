@@ -92,12 +92,13 @@ class ColorLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = reverse ? this.items.reversed.toList() : this.items;
-    final visibleItems = items.where((item) => !item.hidden).toList();
+    final visibleCount = items.where((item) => !item.hidden).length;
+    int visibleCounter = 0;
 
     final children = items.mapIndexed((index, item) {
       if (item.hidden) return const SizedBox.shrink();
 
-      final visibleIndex = visibleItems.indexOf(item);
+      final visibleIndex = visibleCounter++;
 
       final previous = index == 0 ? null : items.elementAtOrNull(index - 1);
       final next = items.elementAtOrNull(index + 1);
@@ -134,7 +135,7 @@ class ColorLegend extends StatelessWidget {
                   ),
                   borderRadius: visibleIndex == 0
                       ? const .vertical(top: Radius.circular(8))
-                      : (visibleIndex + 1) == visibleItems.length
+                      : (visibleIndex + 1) == visibleCount
                       ? const .vertical(bottom: Radius.circular(8))
                       : null,
                 ),

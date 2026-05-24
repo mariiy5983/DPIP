@@ -29,8 +29,6 @@ class SettingsLayout extends StatefulWidget {
 }
 
 class _SettingsLayoutState extends State<SettingsLayout> {
-  final controller = ScrollController();
-
   @override
   Widget build(BuildContext context) {
     return Theme(

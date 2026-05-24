@@ -58,12 +58,7 @@ void _navigateBasedOnChannelKey(BuildContext context, String? channelKey) {
     return;
   }
 
-  // if (channelKey.startsWith('announcement')) {
-  //   AnnouncementRoute().push(context);
-  //   return;
-  // }
-
-  HomeRoute().go(context);
+  const HomeRoute().go(context);
 }
 
 final List<NotificationChannel> _notificationChannels = [
@@ -431,20 +426,14 @@ Future<void> notifyInit() async {
   );
 
   if (needsForceUpdate) {
-    for (var i = 0; i < _notificationChannels.length; i += 5) {
-      final batch = _notificationChannels.skip(i).take(5);
-      for (final channel in batch) {
-        try {
-          await AwesomeNotifications().setChannel(channel, forceUpdate: true);
-        } catch (e, st) {
-          TalkerManager.instance.error('setChannel failed: $channel', e, st);
-        }
+    for (final channel in _notificationChannels) {
+      try {
+        await AwesomeNotifications().setChannel(channel, forceUpdate: true);
+      } catch (e, st) {
+        TalkerManager.instance.error('setChannel failed: $channel', e, st);
       }
     }
-    await Global.preference.setInt(
-      _channelVersionKey,
-      _notificationChannelVersion,
-    );
+    await Global.preference.setInt(_channelVersionKey, _notificationChannelVersion);
   }
 
   AwesomeNotifications().setListeners(

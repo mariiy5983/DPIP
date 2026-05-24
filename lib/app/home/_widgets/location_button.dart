@@ -31,14 +31,7 @@ class LocationButton extends StatelessWidget {
         final favorited = settingsLocation.favorited;
         final temporaryCode = homeLocation.temporaryCode;
         final displayCode = temporaryCode ?? savedCode;
-        final location = Global.location[displayCode];
-
-        late String content;
-        if (location == null) {
-          content = '尚未設定'.i18n;
-        } else {
-          content = location.dynamicName;
-        }
+        final content = Global.location[displayCode]?.dynamicName ?? '尚未設定'.i18n;
 
         return BlurredTextButton(
           onPressed: () => _showLocationMenu(
@@ -74,11 +67,7 @@ class LocationButton extends StatelessWidget {
         currentCode: currentCode,
         onLocationSelected: (code) {
           sheetContext.navigator.pop();
-          if (code == savedCode) {
-            model.setTemporaryCode(null);
-          } else {
-            model.setTemporaryCode(code);
-          }
+          model.setTemporaryCode(code == savedCode ? null : code);
         },
         onAddLocationPressed: () {
           sheetContext.navigator.pop();

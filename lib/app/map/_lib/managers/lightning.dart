@@ -114,10 +114,9 @@ class LightningMapLayerManager extends MapLayerManager {
       final sourceId = MapSourceIds.lightning(time);
       final layerId = MapLayerIds.lightning(time);
 
-      final isSourceExists = (await controller.getSourceIds()).contains(
-        sourceId,
-      );
-      final isLayerExists = (await controller.getLayerIds()).contains(layerId);
+      final ids = await Future.wait([controller.getSourceIds(), controller.getLayerIds()]);
+      final isSourceExists = ids[0].contains(sourceId);
+      final isLayerExists = ids[1].contains(layerId);
 
       if (!isSourceExists) {
         late final List<Lightning> lightningData;

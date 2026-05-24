@@ -25,8 +25,7 @@ class AllObservationAverage extends StatelessWidget {
         return d != null ? (d.temperature, d.humidity) : null;
       },
       builder: (context, data, _) {
-        final tremLabel = '--° / --%';
-
+        const tremLabel = '--° / --%';
         final cwaLabel = data != null
             ? '${data.$1.toStringAsFixed(1)}° / ${data.$2.round()}%'
             : '--° / --%';

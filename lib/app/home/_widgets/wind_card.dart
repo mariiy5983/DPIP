@@ -404,6 +404,7 @@ class _WindCardState extends State<WindCard> with WidgetsBindingObserver, RouteA
   void _showMagneticFieldInfo(BuildContext context) {
     final hasDanger = _compassHasDanger;
     final hasWarning = _compassHasWarning;
+    final statusColor = _compassStatusColor;
     final valueText = _compassAccuracy < 0
         ? '無法測量'.i18n
         : '±${_compassAccuracy.toStringAsFixed(1)}°';
@@ -417,11 +418,7 @@ class _WindCardState extends State<WindCard> with WidgetsBindingObserver, RouteA
               : hasWarning
               ? Symbols.warning_rounded
               : Symbols.check_circle_rounded,
-          color: hasDanger
-              ? Colors.red
-              : hasWarning
-              ? Colors.orange
-              : Colors.green,
+          color: statusColor,
           size: 48,
         ),
         title: Text(
@@ -446,11 +443,7 @@ class _WindCardState extends State<WindCard> with WidgetsBindingObserver, RouteA
               valueText,
               style: context.texts.headlineSmall?.copyWith(
                 fontWeight: .bold,
-                color: hasDanger
-                    ? Colors.red
-                    : hasWarning
-                    ? Colors.orange
-                    : Colors.green,
+                color: statusColor,
               ),
             ),
             const SizedBox(height: 12),
@@ -465,9 +458,7 @@ class _WindCardState extends State<WindCard> with WidgetsBindingObserver, RouteA
               Container(
                 padding: const .all(12),
                 decoration: BoxDecoration(
-                  color: (hasDanger ? Colors.red : Colors.orange).withValues(
-                    alpha: 0.1,
-                  ),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: .circular(8),
                 ),
                 child: Text(

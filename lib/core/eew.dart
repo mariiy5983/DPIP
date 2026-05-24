@@ -9,6 +9,31 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 
 const double ln10 = 2.302585092994046; // Math.log(10)
 
+/// Cached `(int depth, original key string)` pairs from [Global.timeTable].
+///
+/// The travel-time table keys never change at runtime, so we parse them once
+/// and reuse the result for every EEW tick.
+List<({int depth, String key})>? _depthKeyCache;
+
+/// Returns the travel-time table whose depth key is closest to [depth].
+List<({double P, double R, double S})> _closestTable(double depth) {
+  final cache = _depthKeyCache ??= List.unmodifiable(
+    Global.timeTable.keys.map((k) => (depth: int.parse(k), key: k)),
+  );
+
+  var best = cache.first;
+  var bestDist = (best.depth - depth).abs();
+  for (var i = 1; i < cache.length; i++) {
+    final entry = cache[i];
+    final d = (entry.depth - depth).abs();
+    if (d < bestDist) {
+      bestDist = d;
+      best = entry;
+    }
+  }
+  return Global.timeTable[best.key]!;
+}
+
 ({double p, double s, double sT}) calcWaveRadius(
   double depth,
   int time,
@@ -20,11 +45,7 @@ const double ln10 = 2.302585092994046; // Math.log(10)
 
   final double t = (now - time) / 1000.0;
 
-  final timeTable =
-      Global.timeTable[findClosest(
-        Global.timeTable.keys.map(int.parse).toList(),
-        depth,
-      ).toString()]!;
+  final timeTable = _closestTable(depth);
   ({double P, double R, double S})? prevTable;
 
   for (final table in timeTable) {
@@ -57,12 +78,8 @@ const double ln10 = 2.302585092994046; // Math.log(10)
     prevTable = table;
   }
 
-  if (pDist < 0) {
-    pDist = 0;
-  }
-  if (sDist < 0) {
-    sDist = 0;
-  }
+  if (pDist < 0) pDist = 0;
+  if (sDist < 0) sDist = 0;
 
   return (p: pDist, s: sDist, sT: sT);
 }
@@ -83,17 +100,21 @@ Map<String, dynamic> eewAreaPga(
   final Map<String, dynamic> json = {};
   double eewMaxI = 0.0;
 
+  // Hoist epicenter + magnitude-dependent factors out of the per-region loop
+  // (region can have hundreds of entries).
+  final epicenter = LatLng(lat, lon);
+  final depthSq = depth * depth;
+  final pgaScale = 1.657 * exp(1.533 * mag);
+
   region.forEach((String key, Location info) {
-    final double distSurface = LatLng(lat, lon).to(LatLng(info.lat, info.lng)) / 1000;
-    final double dist = sqrt(pow(distSurface, 2) + pow(depth, 2));
-    final double pga = 1.657 * exp(1.533 * mag) * pow(dist, -1.607);
+    final double distSurface = epicenter.to(LatLng(info.lat, info.lng)) / 1000;
+    final double dist = sqrt(distSurface * distSurface + depthSq);
+    final double pga = pgaScale * pow(dist, -1.607);
     double i = pgaToFloat(pga);
     if (i >= 4.5) {
       i = eewAreaPgv([lat, lon], [info.lat, info.lng], depth, mag);
     }
-    if (i > eewMaxI) {
-      eewMaxI = i;
-    }
+    if (i > eewMaxI) eewMaxI = i;
     json[key] = {'dist': dist, 'i': i};
   });
 
@@ -107,31 +128,26 @@ double eewAreaPgv(
   double depth,
   double magW,
 ) {
-  final double long = pow(10, 0.5 * magW - 1.85).toDouble() / 2;
-  final double epicenterDistance =
-      epicenterLocation.asLatLng.to(
-        pointLocation.asLatLng,
-      ) /
-      1000;
-  final double hypocenterDistance = sqrt(pow(depth, 2) + pow(epicenterDistance, 2)) - long;
+  // Compute pow(10, 0.5*magW) once and reuse for `long` and the gpv600 term.
+  // long = pow(10, 0.5*magW - 1.85) / 2 = tenHalfMag * pow(10, -1.85) / 2.
+  final double tenHalfMag = pow(10, 0.5 * magW).toDouble();
+  final double long = tenHalfMag * 0.014125375446227544 / 2;
+  final double epicenterDistance = epicenterLocation.asLatLng.to(pointLocation.asLatLng) / 1000;
+  final double hypocenterDistance =
+      sqrt(depth * depth + epicenterDistance * epicenterDistance) - long;
   final double x = max(hypocenterDistance, 3);
   final double gpv600 = pow(
     10,
-    0.58 * magW + 0.0038 * depth - 1.29 - log(x + 0.0028 * pow(10, 0.5 * magW)) / ln10 - 0.002 * x,
+    0.58 * magW + 0.0038 * depth - 1.29 - log(x + 0.0028 * tenHalfMag) / ln10 - 0.002 * x,
   ).toDouble();
   final double pgv400 = gpv600 * 1.31;
-  final double pgv = pgv400 * 1.0;
-  return 2.68 + 1.72 * log(pgv) / ln10;
+  return 2.68 + 1.72 * log(pgv400) / ln10;
 }
 
 double sWaveTimeByDistance(double depth, double sDist) {
   double sTime = 0.0;
 
-  final timeTable =
-      Global.timeTable[findClosest(
-        Global.timeTable.keys.map(int.parse).toList(),
-        depth,
-      ).toString()]!;
+  final timeTable = _closestTable(depth);
   ({double P, double R, double S})? prevTable;
 
   for (final table in timeTable) {
@@ -157,11 +173,7 @@ double sWaveTimeByDistance(double depth, double sDist) {
 double pWaveTimeByDistance(double depth, double pDist) {
   double pTime = 0.0;
 
-  final timeTable =
-      Global.timeTable[findClosest(
-        Global.timeTable.keys.map(int.parse).toList(),
-        depth,
-      ).toString()]!;
+  final timeTable = _closestTable(depth);
   ({double P, double R, double S})? prevTable;
 
   for (final table in timeTable) {
@@ -184,57 +196,41 @@ double pWaveTimeByDistance(double depth, double pDist) {
   return pTime * 1000;
 }
 
-double pgaToFloat(double pga) {
-  return 2 * (log(pga) / log(10)) + 0.7;
-}
+double pgaToFloat(double pga) => 2 * log(pga) / ln10 + 0.7;
 
-int pgaToIntensity(double pga) {
-  return intensityFloatToInt(pgaToFloat(pga));
-}
+int pgaToIntensity(double pga) => intensityFloatToInt(pgaToFloat(pga));
 
 int intensityFloatToInt(double floatValue) {
-  if (floatValue < 0.5) {
-    return 0;
-  } else if (floatValue < 1.5) {
-    return 1;
-  } else if (floatValue < 2.5) {
-    return 2;
-  } else if (floatValue < 3.5) {
-    return 3;
-  } else if (floatValue < 4.5) {
-    return 4;
-  } else if (floatValue < 5.0) {
-    return 5; // 5弱
-  } else if (floatValue < 5.5) {
-    return 6; // 5強
-  } else if (floatValue < 6.0) {
-    return 7; // 6弱
-  } else if (floatValue < 6.5) {
-    return 8; // 6強
-  } else {
-    return 9; // 7
-  }
+  if (floatValue < 0.5) return 0;
+  if (floatValue < 1.5) return 1;
+  if (floatValue < 2.5) return 2;
+  if (floatValue < 3.5) return 3;
+  if (floatValue < 4.5) return 4;
+  if (floatValue < 5.0) return 5; // 5弱
+  if (floatValue < 5.5) return 6; // 5強
+  if (floatValue < 6.0) return 7; // 6弱
+  if (floatValue < 6.5) return 8; // 6強
+  return 9; // 7
 }
 
-String intensityToNumberString(int level) {
-  return (level == 5)
-      ? '5⁻'
-      : (level == 6)
-      ? '5⁺'
-      : (level == 7)
-      ? '6⁻'
-      : (level == 8)
-      ? '6⁺'
-      : (level == 9)
-      ? '7'
-      : level.toString();
-}
+String intensityToNumberString(int level) => switch (level) {
+  5 => '5⁻',
+  6 => '5⁺',
+  7 => '6⁻',
+  8 => '6⁺',
+  9 => '7',
+  _ => level.toString(),
+};
+
+/// Cached sqrt(3), used as the S/P time ratio (see derivation in [calculateWaveTime]).
+final double _sqrt3 = sqrt(3);
 
 WaveTime calculateWaveTime(double depth, double distance) {
-  final double za = 1 * depth;
-  double g0;
-  double G;
+  final double za = depth;
   final double xb = distance;
+
+  final double g0;
+  final double G;
   if (depth <= 40) {
     g0 = 5.10298;
     G = 0.06659;
@@ -242,32 +238,24 @@ WaveTime calculateWaveTime(double depth, double distance) {
     g0 = 7.804799;
     G = 0.004573;
   }
-  final double zc = -1 * (g0 / G);
-  final double xc = (pow(xb, 2) - 2 * (g0 / G) * za - pow(za, 2)) / (2 * xb);
+
+  final double g0OverG = g0 / G;
+  final double zc = -g0OverG;
+  final double xc = (xb * xb - 2 * g0OverG * za - za * za) / (2 * xb);
+
   double thetaA = atan((za - zc) / xc);
-  if (thetaA < 0) {
-    thetaA = thetaA + pi;
-  }
+  if (thetaA < 0) thetaA += pi;
   thetaA = pi - thetaA;
-  final double thetaB = atan(-1 * zc / (xb - xc));
+  final double thetaB = atan(-zc / (xb - xc));
   double ptime = (1 / G) * log(tan(thetaA / 2) / tan(thetaB / 2));
-  final double g0_ = g0 / sqrt(3);
-  final double g_ = G / sqrt(3);
-  final double zc_ = -1 * (g0_ / g_);
-  final double xc_ = (pow(xb, 2) - 2 * (g0_ / g_) * za - pow(za, 2)) / (2 * xb);
-  double thetaA_ = atan((za - zc_) / xc_);
-  if (thetaA_ < 0) {
-    thetaA_ = thetaA_ + pi;
-  }
-  thetaA_ = pi - thetaA_;
-  final double thetaB_ = atan(-1 * zc_ / (xb - xc_));
-  double stime = (1 / g_) * log(tan(thetaA_ / 2) / tan(thetaB_ / 2));
-  if (distance / ptime > 7) {
-    ptime = distance / 7;
-  }
-  if (distance / stime > 4) {
-    stime = distance / 4;
-  }
+
+  // S-wave: g0_ = g0/sqrt(3), g_ = G/sqrt(3), so g0_/g_ == g0/G, meaning
+  // zc_ == zc, xc_ == xc, and both thetas are identical to the P branch.
+  // Therefore stime = (1/g_) * log_arg = (sqrt(3)/G) * log_arg = sqrt(3) * ptime.
+  double stime = ptime * _sqrt3;
+
+  if (distance / ptime > 7) ptime = distance / 7;
+  if (distance / stime > 4) stime = distance / 4;
   return WaveTime(p: ptime, s: stime);
 }
 
@@ -280,7 +268,7 @@ WaveTime calculateWaveTime(double depth, double distance) {
   double userLon,
 ) {
   final distSurface = LatLng(eqLat, eqLng).to(LatLng(userLat, userLon)) / 1000;
-  final dist = sqrt(pow(distSurface, 2) + pow(depth, 2));
+  final dist = sqrt(distSurface * distSurface + depth * depth);
   final pga = 1.657 * exp(1.533 * mag) * pow(dist, -1.607);
   var intensity = pgaToFloat(pga);
   if (intensity >= 4.5) {

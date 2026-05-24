@@ -11,7 +11,7 @@ class CompassService {
 
   StreamController<CompassEvent>? _controller;
   StreamSubscription<CompassEvent>? _sourceSubscription;
-  double _lastHeading = 0.0;
+  double _lastHeading = 0;
   bool _isInitialized = false;
 
   Stream<CompassEvent>? get events => _controller?.stream;
@@ -23,55 +23,45 @@ class CompassService {
   bool get hasCompass => _isInitialized && _controller != null;
 
   Future<void> initialize() async {
+    final log = TalkerManager.instance;
     if (_isInitialized) {
-      TalkerManager.instance.debug('CompassService: already initialized');
+      log.debug('CompassService: already initialized');
       return;
     }
 
-    TalkerManager.instance.debug('CompassService: initializing...');
+    log.debug('CompassService: initializing...');
 
     try {
       final sourceStream = FlutterCompass.events;
       if (sourceStream == null) {
-        TalkerManager.instance.debug('CompassService: compass not available');
-        _isInitialized = true;
+        log.debug('CompassService: compass not available');
         return;
       }
 
       _controller = StreamController<CompassEvent>.broadcast(
-        onListen: () {
-          TalkerManager.instance.debug('CompassService: first listener added');
-        },
-        onCancel: () {
-          TalkerManager.instance.debug('CompassService: last listener removed');
-        },
+        onListen: () => log.debug('CompassService: first listener added'),
+        onCancel: () => log.debug('CompassService: last listener removed'),
       );
 
       _sourceSubscription = sourceStream.listen(
         (event) {
-          if (event.heading != null) {
-            _lastHeading = event.heading!;
-          }
+          if (event.heading != null) _lastHeading = event.heading!;
           _controller?.add(event);
         },
         onError: (Object error) {
-          TalkerManager.instance.error('CompassService: stream error', error);
+          log.error('CompassService: stream error', error);
           _controller?.addError(error);
         },
         onDone: () {
-          TalkerManager.instance.debug('CompassService: source stream done');
+          log.debug('CompassService: source stream done');
           _controller?.close();
         },
       );
 
-      _isInitialized = true;
-      TalkerManager.instance.debug('CompassService: initialized successfully');
+      log.debug('CompassService: initialized successfully');
     } catch (e, s) {
-      TalkerManager.instance.error(
-        'CompassService: initialization failed',
-        e,
-        s,
-      );
+      log.error('CompassService: initialization failed', e, s);
+    } finally {
       _isInitialized = true;
     }
   }

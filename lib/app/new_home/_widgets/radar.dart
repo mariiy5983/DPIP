@@ -41,15 +41,16 @@ class _RadarState extends State<Radar> with WidgetsBindingObserver, RouteAware {
 
   void _onHomeModelChanged() {
     final code = context.home.temporaryCode ?? GlobalProviders.location.code;
+    final loc = code != null ? Global.location[code] : null;
+    final coords = GlobalProviders.location.coordinates;
     final LatLng target;
     final double zoom;
 
-    if (code != null && Global.location[code] != null) {
-      final loc = Global.location[code]!;
+    if (loc != null) {
       target = LatLng(loc.lat, loc.lng);
       zoom = DpipMap.kUserLocationZoom;
-    } else if (GlobalProviders.location.coordinates != null) {
-      target = GlobalProviders.location.coordinates!;
+    } else if (coords != null) {
+      target = coords;
       zoom = DpipMap.kUserLocationZoom;
     } else {
       target = DpipMap.kTaiwanCenter;

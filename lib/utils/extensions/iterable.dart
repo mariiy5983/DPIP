@@ -24,9 +24,16 @@ extension IterableExtension<T> on Iterable<T> {
   ///
   /// Note: Elements not present in [order] will have an index of -1 and will be sorted to the end.
   Iterable<T> orderedBy(Iterable<T> order) {
-    final orderList = order.toList();
+    // Pre-index `order` for O(1) lookup; otherwise each comparison is O(n)
+    // turning the sort into O(N² log N).
+    final positions = <T, int>{};
+    var i = 0;
+    for (final e in order) {
+      positions[e] ??= i++;
+    }
+    const unranked = -1;
     return toList().sorted(
-      (a, b) => orderList.indexOf(a) - orderList.indexOf(b),
+      (a, b) => (positions[a] ?? unranked) - (positions[b] ?? unranked),
     );
   }
 
@@ -152,9 +159,15 @@ extension SetExtension<T> on Set<T> {
   ///
   /// Note: Elements not present in [order] will have an index of -1 and will be sorted to the end.
   Set<T> orderedBy(Iterable<T> order) {
-    final orderList = order.toList();
+    // Pre-index `order` for O(1) lookup; otherwise each comparison is O(n).
+    final positions = <T, int>{};
+    var i = 0;
+    for (final e in order) {
+      positions[e] ??= i++;
+    }
+    const unranked = -1;
     return sorted(
-      (a, b) => orderList.indexOf(a) - orderList.indexOf(b),
+      (a, b) => (positions[a] ?? unranked) - (positions[b] ?? unranked),
     ).toSet();
   }
 }

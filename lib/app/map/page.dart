@@ -148,31 +148,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _setupWeatherLayerTimeSync() {
-    final temperatureManager = getLayerManager<TemperatureMapLayerManager>(
-      MapLayer.temperature,
-    );
-    temperatureManager?.onTimeChanged = (time) {
-      syncTimeToRadar(time);
-    };
-
-    final precipitationManager = getLayerManager<PrecipitationMapLayerManager>(
-      MapLayer.precipitation,
-    );
-    precipitationManager?.onTimeChanged = (time) {
-      syncTimeToRadar(time);
-    };
-
-    final windManager = getLayerManager<WindMapLayerManager>(MapLayer.wind);
-    windManager?.onTimeChanged = (time) {
-      syncTimeToRadar(time);
-    };
-
-    final lightningManager = getLayerManager<LightningMapLayerManager>(
-      MapLayer.lightning,
-    );
-    lightningManager?.onTimeChanged = (time) {
-      syncTimeToRadar(time);
-    };
+    getLayerManager<TemperatureMapLayerManager>(MapLayer.temperature)?.onTimeChanged =
+        syncTimeToRadar;
+    getLayerManager<PrecipitationMapLayerManager>(MapLayer.precipitation)?.onTimeChanged =
+        syncTimeToRadar;
+    getLayerManager<WindMapLayerManager>(MapLayer.wind)?.onTimeChanged = syncTimeToRadar;
+    getLayerManager<LightningMapLayerManager>(MapLayer.lightning)?.onTimeChanged = syncTimeToRadar;
   }
 
   Future<void> _syncRadarTimeOnCombination(MapLayer newLayer) async {
@@ -284,13 +265,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Future<void> setLayers(Set<MapLayer> layers) async {
     if (!mounted) return;
 
-    for (final layer in layers) {
-      final manager = _managers[layer];
-      if (manager != null) {
+    await Future.wait(
+      layers.map((layer) async {
+        final manager = _managers[layer];
+        if (manager == null) return;
         if (!manager.didSetup) await manager.setup();
         await manager.show();
-      }
-    }
+      }),
+    );
 
     setState(() => _activeLayers = layers);
   }

@@ -17,6 +17,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+extension on LocationPermission {
+  bool get isDenied => this == LocationPermission.denied || this == LocationPermission.deniedForever;
+}
+
 /// Background location service with foreground support
 class LocationServiceManager {
   LocationServiceManager._();
@@ -43,8 +47,7 @@ class LocationServiceManager {
     if (Preference.locationAuto != true) return;
 
     final permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever)
-      return;
+    if (permission.isDenied) return;
 
     try {
       await stop();
@@ -193,8 +196,7 @@ class LocationService {
       }
 
       final permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
+      if (permission.isDenied) {
         TalkerManager.instance.warning(
           '⚙️::BackgroundLocationService location permission not granted, stopping service',
         );
@@ -323,7 +325,7 @@ class LocationService {
   @pragma('vm:entry-point')
   static Future<LatLng?> _$getDeviceGeographicalLocation() async {
     final permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+    if (permission.isDenied) {
       TalkerManager.instance.warning(
         '⚙️::BackgroundLocationService location permission not granted',
       );
@@ -393,64 +395,36 @@ class LocationService {
     }
   }
 
-  static ({String code, Location location})? _$getLocationFromCoordinates(
-    LatLng target,
-  ) {
+  static bool _pointInRing(LatLng target, List<List<double>> ring) {
+    bool inside = false;
+    final n = ring.length;
+    for (int i = 0, j = n - 1; i < n; j = i++) {
+      final xi = ring[i][0], yi = ring[i][1];
+      final xj = ring[j][0], yj = ring[j][1];
+      if ((yi > target.latitude) != (yj > target.latitude) &&
+          target.longitude < (xj - xi) * (target.latitude - yi) / (yj - yi) + xi) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  static ({String code, Location location})? _$getLocationFromCoordinates(LatLng target) {
     final geoJsonData = _$geoJsonData;
     final locationData = _$locationData;
 
     if (geoJsonData == null || locationData == null) return null;
 
-    final features = geoJsonData.features;
-
-    for (final feature in features) {
+    for (final feature in geoJsonData.features) {
       if (feature == null) continue;
       final geometry = feature.geometry;
       if (geometry == null) continue;
 
-      bool isInPolygon = false;
-
-      if (geometry is GeoJSONPolygon) {
-        final polygon = geometry.coordinates[0];
-        bool isInside = false;
-        int j = polygon.length - 1;
-        for (int i = 0; i < polygon.length; i++) {
-          final double xi = polygon[i][0];
-          final double yi = polygon[i][1];
-          final double xj = polygon[j][0];
-          final double yj = polygon[j][1];
-          final bool intersect =
-              ((yi > target.latitude) != (yj > target.latitude)) &&
-              (target.longitude < (xj - xi) * (target.latitude - yi) / (yj - yi) + xi);
-          if (intersect) isInside = !isInside;
-          j = i;
-        }
-        isInPolygon = isInside;
-      }
-
-      if (geometry is GeoJSONMultiPolygon) {
-        final multiPolygon = geometry.coordinates;
-        for (final polygonCoordinates in multiPolygon) {
-          final polygon = polygonCoordinates[0];
-          bool isInside = false;
-          int j = polygon.length - 1;
-          for (int i = 0; i < polygon.length; i++) {
-            final double xi = polygon[i][0];
-            final double yi = polygon[i][1];
-            final double xj = polygon[j][0];
-            final double yj = polygon[j][1];
-            final bool intersect =
-                ((yi > target.latitude) != (yj > target.latitude)) &&
-                (target.longitude < (xj - xi) * (target.latitude - yi) / (yj - yi) + xi);
-            if (intersect) isInside = !isInside;
-            j = i;
-          }
-          if (isInside) {
-            isInPolygon = true;
-            break;
-          }
-        }
-      }
+      final bool isInPolygon = switch (geometry) {
+        GeoJSONPolygon() => _pointInRing(target, geometry.coordinates[0]),
+        GeoJSONMultiPolygon() => geometry.coordinates.any((p) => _pointInRing(target, p[0])),
+        _ => false,
+      };
 
       if (isInPolygon) {
         final code = feature.properties!['CODE']?.toString();

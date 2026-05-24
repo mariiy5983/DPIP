@@ -224,10 +224,9 @@ class ReportMapLayerManager extends MapLayerManager {
       final sourceId = MapSourceIds.report();
       final layerId = MapLayerIds.report();
 
-      final isSourceExists = (await controller.getSourceIds()).contains(
-        sourceId,
-      );
-      final isLayerExists = (await controller.getLayerIds()).contains(layerId);
+      final ids = await Future.wait([controller.getSourceIds(), controller.getLayerIds()]);
+      final isSourceExists = ids[0].contains(sourceId);
+      final isLayerExists = ids[1].contains(layerId);
 
       if (isSourceExists && isLayerExists) return;
 
@@ -382,10 +381,9 @@ class ReportMapLayerManager extends MapLayerManager {
         report.time.millisecondsSinceEpoch.toString(),
       );
 
-      final isSourceExists = (await controller.getSourceIds()).contains(
-        sourceId,
-      );
-      final isLayerExists = (await controller.getLayerIds()).contains(layerId);
+      final ids = await Future.wait([controller.getSourceIds(), controller.getLayerIds()]);
+      final isSourceExists = ids[0].contains(sourceId);
+      final isLayerExists = ids[1].contains(layerId);
 
       if (isSourceExists && isLayerExists) return;
 
@@ -437,10 +435,9 @@ class ReportMapLayerManager extends MapLayerManager {
         report.time.millisecondsSinceEpoch.toString(),
       );
 
-      final isLayerExists = (await controller.getLayerIds()).contains(layerId);
-      final isSourceExists = (await controller.getSourceIds()).contains(
-        sourceId,
-      );
+      final ids = await Future.wait([controller.getSourceIds(), controller.getLayerIds()]);
+      final isSourceExists = ids[0].contains(sourceId);
+      final isLayerExists = ids[1].contains(layerId);
 
       if (isLayerExists) {
         await controller.removeLayer(layerId);

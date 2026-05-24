@@ -50,9 +50,7 @@ mixin DeviceEndpoints {
     final res = await _dio.get(
       'https://api-1.exptech.dev/api/v2/notify/$token',
     );
-    return NotifySettings.fromJson(
-      (res.data as List).map((e) => e as int).toList(),
-    );
+    return NotifySettings.fromJson((res.data as List).cast<int>());
   }
 
   /// 設定通知
@@ -78,9 +76,7 @@ mixin DeviceEndpoints {
     final res = await _dio.get(
       'https://api-1.exptech.dev/api/v2/notify/$token/${channel.index}/${status.index}',
     );
-    return NotifySettings.fromJson(
-      (res.data as List).map((e) => e as int).toList(),
-    );
+    return NotifySettings.fromJson((res.data as List).cast<int>());
   }
 
   /// Reports network diagnostics to the server.

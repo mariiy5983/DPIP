@@ -26,6 +26,7 @@ class ThunderstormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final extended = context.theme.extendedColors;
     return ResponsiveContainer(
       maxWidth: 720,
       child: Stack(
@@ -33,11 +34,8 @@ class ThunderstormCard extends StatelessWidget {
           IgnorePointer(
             child: Container(
               decoration: BoxDecoration(
-                color: context.theme.extendedColors.blueContainer,
-                border: Border.all(
-                  color: context.theme.extendedColors.blue,
-                  width: 2,
-                ),
+                color: extended.blueContainer,
+                border: Border.all(color: extended.blue, width: 2),
                 borderRadius: .circular(16),
               ),
               padding: const .all(12),
@@ -54,7 +52,7 @@ class ThunderstormCard extends StatelessWidget {
                         children: [
                           Container(
                             decoration: BoxDecoration(
-                              color: context.theme.extendedColors.blue,
+                              color: extended.blue,
                               borderRadius: .circular(8),
                             ),
                             padding: const .fromLTRB(8, 6, 12, 6),
@@ -64,14 +62,14 @@ class ThunderstormCard extends StatelessWidget {
                               children: [
                                 Icon(
                                   Symbols.thunderstorm_rounded,
-                                  color: context.theme.extendedColors.onBlue,
+                                  color: extended.onBlue,
                                   weight: 700,
                                   size: 22,
                                 ),
                                 Text(
                                   '雷雨即時訊息'.i18n,
                                   style: context.texts.labelLarge!.copyWith(
-                                    color: context.theme.extendedColors.onBlue,
+                                    color: extended.onBlue,
                                     fontWeight: .bold,
                                   ),
                                 ),
@@ -94,13 +92,11 @@ class ThunderstormCard extends StatelessWidget {
                         'time': history.time.expiresAt.toSimpleDateTimeString(),
                       }),
                       style: context.texts.bodyLarge!.copyWith(
-                        color: context.theme.extendedColors.onBlueContainer,
+                        color: extended.onBlueContainer,
                       ),
                       tags: {
                         'bold': StyledTextTag(
-                          style: const TextStyle(
-                            fontWeight: .bold,
-                          ),
+                          style: const TextStyle(fontWeight: .bold),
                         ),
                       },
                     ),
@@ -118,9 +114,7 @@ class ThunderstormCard extends StatelessWidget {
                     builder: (context) => ThunderstormPage(item: history),
                   ),
                 ),
-                splashColor: context.theme.extendedColors.blue.withValues(
-                  alpha: 0.2,
-                ),
+                splashColor: extended.blue.withValues(alpha: 0.2),
                 borderRadius: .circular(16),
               ),
             ),

@@ -88,8 +88,7 @@ class SettingsIndexPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appInfo = '${Global.packageInfo.version}(${Global.packageInfo.buildNumber})';
-    final deviceInfo =
-        '${DeviceInfo.model}${DeviceInfo.serial != null ? '' : ''}(${DeviceInfo.version})';
+    final deviceInfo = '${DeviceInfo.model}(${DeviceInfo.version})';
 
     return ListView(
       padding: .only(top: 16, bottom: 16 + context.padding.bottom),

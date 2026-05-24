@@ -63,10 +63,12 @@ mixin EarthquakeEndpoints {
         ? 'https://api.core.exptech.dev/api/v2/eq/eew/${time ~/ 1000}'
         : '${lb}/v2/eq/eew';
     final res = await _dio.get(url);
-    final eewList = (res.data as List).map(
+    Iterable<Eew> eewList = (res.data as List).map(
       (e) => Eew.fromMap(e as Map<String, dynamic>),
     );
-    if (Preference.experimental__eewAllSource == true) return eewList.toList();
-    return eewList.where((e) => e.agency == 'cwa').toList();
+    if (Preference.experimental__eewAllSource != true) {
+      eewList = eewList.where((e) => e.agency == 'cwa');
+    }
+    return eewList.toList();
   }
 }

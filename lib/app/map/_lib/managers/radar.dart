@@ -210,8 +210,9 @@ class RadarMapLayerManager extends MapLayerManager {
     final sourceId = MapSourceIds.radar(time);
     final layerId = MapLayerIds.radar(time);
 
-    final isSourceExists = (await controller.getSourceIds()).contains(sourceId);
-    final isLayerExists = (await controller.getLayerIds()).contains(layerId);
+    final ids = await Future.wait([controller.getSourceIds(), controller.getLayerIds()]);
+    final isSourceExists = ids[0].contains(sourceId);
+    final isLayerExists = ids[1].contains(layerId);
 
     if (!isSourceExists) {
       final properties = RasterSourceProperties(
@@ -260,28 +261,22 @@ class RadarMapLayerManager extends MapLayerManager {
     final layersToPreload = <String>[];
 
     for (int i = 1; i <= 3; i++) {
-      if (currentIndex - i >= 0) {
-        layersToPreload.add(radarList[currentIndex - i]);
-      }
-      if (currentIndex + i < radarList.length) {
-        layersToPreload.add(radarList[currentIndex + i]);
-      }
+      final prev = currentIndex - i;
+      final next = currentIndex + i;
+      if (prev >= 0) layersToPreload.add(radarList[prev]);
+      if (next < radarList.length) layersToPreload.add(radarList[next]);
     }
 
-    for (final time in layersToPreload) {
-      if (!_preloadedLayers.contains(time)) {
+    await Future.wait(
+      layersToPreload.where((t) => !_preloadedLayers.contains(t)).map((time) async {
         try {
           await _setupAndShowLayer(time);
           await _hideLayer(time);
         } catch (e, s) {
-          TalkerManager.instance.error(
-            'Failed to preload radar layer: $time',
-            e,
-            s,
-          );
+          TalkerManager.instance.error('Failed to preload radar layer: $time', e, s);
         }
-      }
-    }
+      }),
+    );
   }
 
   /// Starts auto-play if stopped, or stops it if currently running.
@@ -1082,11 +1077,9 @@ class _RadarProgressBar extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    double progress = 0.0;
-    if (startIndex != endIndex) {
-      progress = (startIndex - currentIndex) / (startIndex - endIndex);
-      progress = progress.clamp(0.0, 1.0);
-    }
+    final progress = startIndex == endIndex
+        ? 0.0
+        : ((startIndex - currentIndex) / (startIndex - endIndex)).clamp(0.0, 1.0);
 
     return Row(
       spacing: 8,

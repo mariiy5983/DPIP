@@ -15,9 +15,7 @@ class NewHomeLayout extends StatefulWidget {
   State<NewHomeLayout> createState() => _NewHomeLayoutState();
 }
 
-class _NewHomeLayoutState extends State<NewHomeLayout> with TickerProviderStateMixin {
-  late final _scrollAnimator = AnimationController(vsync: this);
-
+class _NewHomeLayoutState extends State<NewHomeLayout> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,9 +100,4 @@ class _NewHomeLayoutState extends State<NewHomeLayout> with TickerProviderStateM
     );
   }
 
-  @override
-  void dispose() {
-    _scrollAnimator.dispose();
-    super.dispose();
-  }
 }

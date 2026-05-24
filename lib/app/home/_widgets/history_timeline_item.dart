@@ -39,6 +39,7 @@ class HistoryTimelineItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasDetail = shouldShowArrow(history);
+    final alpha = expired ? 0.6 : 1.0;
 
     return Container(
       margin: const .fromLTRB(16, 4, 16, 4),
@@ -98,7 +99,7 @@ class HistoryTimelineItem extends StatelessWidget {
                               ),
                               style: context.texts.labelSmall?.copyWith(
                                 color: context.colors.onSurfaceVariant.withValues(
-                                  alpha: expired ? 0.6 : 1,
+                                  alpha: alpha,
                                 ),
                               ),
                             ),
@@ -107,7 +108,7 @@ class HistoryTimelineItem extends StatelessWidget {
                               history.text.content['all']!.subtitle,
                               style: context.texts.titleSmall?.copyWith(
                                 color: context.colors.onSurface.withValues(
-                                  alpha: expired ? 0.6 : 1,
+                                  alpha: alpha,
                                 ),
                                 fontWeight: .w600,
                               ),
@@ -119,7 +120,7 @@ class HistoryTimelineItem extends StatelessWidget {
                               history.text.description['all']!,
                               style: context.texts.bodySmall?.copyWith(
                                 color: context.colors.onSurfaceVariant.withValues(
-                                  alpha: expired ? 0.6 : 1,
+                                  alpha: alpha,
                                 ),
                               ),
                               maxLines: 2,

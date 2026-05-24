@@ -20,7 +20,6 @@ import 'package:dpip/utils/extensions/latlng.dart';
 import 'package:dpip/utils/extensions/number.dart';
 import 'package:dpip/utils/log.dart';
 import 'package:dpip/widgets/map/map.dart';
-import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:i18n_extension/i18n_extension.dart';
 import 'package:intl/intl.dart';
@@ -45,10 +44,9 @@ class TsunamiMapLayerManager extends MapLayerManager {
       final sourceId = MapSourceIds.tsunami(currentTsunami.value);
       final layerId = MapLayerIds.tsunami(currentTsunami.value);
 
-      final isSourceExists = (await controller.getSourceIds()).contains(
-        sourceId,
-      );
-      final isLayerExists = (await controller.getLayerIds()).contains(layerId);
+      final ids = await Future.wait([controller.getSourceIds(), controller.getLayerIds()]);
+      final isSourceExists = ids[0].contains(sourceId);
+      final isLayerExists = ids[1].contains(layerId);
 
       if (isSourceExists && isLayerExists) return;
 
@@ -173,23 +171,12 @@ class _TsunamiMapLayerSheetState extends State<TsunamiMapLayerSheet> {
     setState(() {});
   }
 
-  String heightToColor(int height) {
-    Color color;
-    if (height == 3) {
-      color = const Color(0xFFE543FF);
-    } else if (height == 2) {
-      color = const Color(0xFFC90000);
-    } else if (height == 1) {
-      color = const Color(0xFFFFC900);
-    } else {
-      color = const Color(0xFF00AAFF);
-    }
-    return '#${color.hex}';
-  }
-
-  DateTime _convertTimestamp(int timestamp) {
-    return DateTime.fromMillisecondsSinceEpoch(timestamp);
-  }
+  String heightToColor(int height) => switch (height) {
+    3 => '#E543FF',
+    2 => '#C90000',
+    1 => '#FFC900',
+    _ => '#00AAFF',
+  };
 
   Future<void> addTsunamiObservationPoints(Tsunami tsunami) async {
     await _mapController.removeLayer('tsunami-actual-circles');
@@ -238,7 +225,7 @@ class _TsunamiMapLayerSheetState extends State<TsunamiMapLayerSheet> {
             'waveHeight': actualStation.waveHeight,
             'arrivalTime': DateFormat(
               'MM/dd HH:mm',
-            ).format(_convertTimestamp(actualStation.arrivalTime)),
+            ).format(DateTime.fromMillisecondsSinceEpoch(actualStation.arrivalTime)),
           },
           'geometry': {
             'type': 'Point',
@@ -377,11 +364,11 @@ class _TsunamiMapLayerSheetState extends State<TsunamiMapLayerSheet> {
       _tsunami_id = id.split('-')[0];
       _tsunami_serial = int.parse(id.split('-')[1]);
       tsunami = await ExpTech().getTsunami(id);
-      (tsunami?.status == 0)
-          ? tsunamiStatus = '發布'
-          : (tsunami?.status == 1)
-          ? tsunamiStatus = '更新'
-          : tsunamiStatus = '解除';
+      tsunamiStatus = switch (tsunami?.status) {
+        0 => '發布',
+        1 => '更新',
+        _ => '解除',
+      };
 
       final List<String> options = generateTsunamiOptions();
       if (options.isNotEmpty && _selectedOption == null) {

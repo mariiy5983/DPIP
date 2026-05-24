@@ -114,11 +114,11 @@ class Global {
       loadTimeTableData(),
     ]);
 
-    packageInfo = (results[0] as PackageInfo?)!;
-    preference = (results[1] as SharedPreferences?)!;
-    boxGeojson = (results[2] as GeoJSONFeatureCollection?)!;
-    location = (results[3] as Map<String, Location>?)!;
-    timeTable = (results[4] as TimeTable?)!;
+    packageInfo = results[0] as PackageInfo;
+    preference = results[1] as SharedPreferences;
+    boxGeojson = results[2] as GeoJSONFeatureCollection;
+    location = results[3] as Map<String, Location>;
+    timeTable = results[4] as TimeTable;
 
     townGeojson = await loadTownGeojson();
     await loadNotifyTestContent();

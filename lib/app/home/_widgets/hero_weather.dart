@@ -120,7 +120,7 @@ class HeroWeather extends StatelessWidget {
             Icon(
               _getWeatherIcon(data.weatherCode),
               size: 24,
-              color: Colors.white.withValues(alpha: 1),
+              color: Colors.white,
               shadows: [
                 Shadow(
                   color: Colors.black.withValues(alpha: 0.3),
@@ -133,7 +133,7 @@ class HeroWeather extends StatelessWidget {
             Text(
               data.weather,
               style: context.texts.titleMedium?.copyWith(
-                color: Colors.white.withValues(alpha: 1),
+                color: Colors.white,
                 fontWeight: .w400,
                 shadows: [
                   Shadow(
@@ -152,7 +152,7 @@ class HeroWeather extends StatelessWidget {
             'feelsLike': feelsLike.round(),
           }),
           style: context.texts.bodyMedium?.copyWith(
-            color: Colors.white.withValues(alpha: 1),
+            color: Colors.white,
             shadows: [
               Shadow(
                 color: Colors.black.withValues(alpha: 0.3),
@@ -203,16 +203,15 @@ class HeroWeather extends StatelessWidget {
   }
 
   /// Returns the appropriate [IconData] for the given CWA weather [code].
-  IconData _getWeatherIcon(int code) {
-    if (code >= 1 && code <= 3) return Symbols.clear_day_rounded;
-    if (code >= 4 && code <= 7) return Symbols.partly_cloudy_day_rounded;
-    if (code >= 8 && code <= 14) return Symbols.cloud_rounded;
-    if (code >= 15 && code <= 22) return Symbols.rainy_rounded;
-    if (code >= 23 && code <= 28) return Symbols.rainy_heavy_rounded;
-    if (code >= 29 && code <= 35) return Symbols.thunderstorm_rounded;
-    if (code >= 36 && code <= 41) return Symbols.weather_snowy_rounded;
-    if (code >= 42) return Symbols.foggy_rounded;
-
-    return Symbols.cloud_rounded;
-  }
+  IconData _getWeatherIcon(int code) => switch (code) {
+    >= 1 && <= 3 => Symbols.clear_day_rounded,
+    >= 4 && <= 7 => Symbols.partly_cloudy_day_rounded,
+    >= 8 && <= 14 => Symbols.cloud_rounded,
+    >= 15 && <= 22 => Symbols.rainy_rounded,
+    >= 23 && <= 28 => Symbols.rainy_heavy_rounded,
+    >= 29 && <= 35 => Symbols.thunderstorm_rounded,
+    >= 36 && <= 41 => Symbols.weather_snowy_rounded,
+    >= 42 => Symbols.foggy_rounded,
+    _ => Symbols.cloud_rounded,
+  };
 }

@@ -30,9 +30,6 @@ class SettingsLocationSelectPage extends StatelessWidget {
         .toList();
 
     final length = locations.length;
-    print('length = ${locations.length}');
-    print(locations);
-
     final code = context.useLocation.code;
 
     return CustomScrollView(

@@ -13,7 +13,6 @@ import 'package:dpip/core/service.dart';
 import 'package:dpip/core/update.dart';
 import 'package:dpip/global.dart';
 import 'package:dpip/utils/log.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -25,12 +24,12 @@ import 'package:timezone/data/latest.dart';
 final fcmReadyCompleter = Completer<void>();
 final talker = TalkerManager.instance;
 
+const _platform = MethodChannel('com.exptech.dpip/shortcut');
+
 void main() async {
-  final overallStartTime = DateTime.now();
+  final overall = Stopwatch()..start();
   talker.log('--- 冷啟動偵測開始 ---');
-  talker.log('🔥 1. (main) 啟動時間: ${overallStartTime.toIso8601String()}');
   WidgetsFlutterBinding.ensureInitialized();
-  String? initialShortcut;
 
   if (Platform.isIOS) {
     // iOS 14 以下改回用 StoreKit1
@@ -40,75 +39,39 @@ void main() async {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(systemNavigationBarColor: Colors.transparent),
   );
-  SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.edgeToEdge,
-    overlays: [SystemUiOverlay.top],
-  );
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge, overlays: [SystemUiOverlay.top]);
 
-  FlutterError.onError = (FlutterErrorDetails details) {
-    talker.handle(details.exception, details.stack);
-  };
+  FlutterError.onError = (details) => talker.handle(details.exception, details.stack);
 
-  final globalInitStart = DateTime.now();
-  talker.log('⏳ 2. 啟動 Global...');
-  await Global.init();
-  final globalInitEnd = DateTime.now();
-  talker.log(
-    '✅ 2. Global 完成。耗時: ${globalInitEnd.difference(globalInitStart).inMilliseconds}ms',
-  );
-
+  await _timed('Global', Global.init());
   await Preference.init();
   final isFirstLaunch = Preference.instance.getBool('isFirstLaunch') ?? true;
   GlobalProviders.init();
   initializeTimeZones();
-  initialShortcut = await getInitialShortcut();
+  final initialShortcut = await _getInitialShortcut();
 
-  talker.log('⏳ 3. 啟動 並行任務... (測量總耗時)');
-  final futureWaitStart = DateTime.now();
-  await Future.wait([
-    _loggedTask('AppLocalizations.load', AppLocalizations.load()),
-    _loggedTask(
-      'LocationNameLocalizations.load',
-      LocationNameLocalizations.load(),
-    ),
-    // _loggedTask(
-    //   'WeatherStationLocalizations.load',
-    //   WeatherStationLocalizations.load(),
-    // ),
-  ]);
-  final futureWaitEnd = DateTime.now();
-  talker.log(
-    '✅ 3.並行任務全部完成。總耗時 (取決於最慢任務): ${futureWaitEnd.difference(futureWaitStart).inMilliseconds}ms',
+  await _timed(
+    '並行任務',
+    Future.wait([
+      _timed('AppLocalizations.load', AppLocalizations.load()),
+      _timed('LocationNameLocalizations.load', LocationNameLocalizations.load()),
+    ]),
   );
 
   if (Platform.isIOS) {
     await DeviceInfo.init();
   } else {
-    unawaited(
-      () async {
-        final start = DateTime.now();
-        await DeviceInfo.init();
-        talker.log(
-          '📱 DeviceInfo.init 完成 ${DateTime.now().difference(start).inMilliseconds}ms',
-        );
-      }(),
-    );
+    unawaited(_timed('📱 DeviceInfo.init', DeviceInfo.init()));
   }
 
   if (isFirstLaunch) {
     talker.log('🟣 首次啟動 → 前置初始化 FCM + 通知');
-    await Future.wait([
-      _loggedTask('fcmInit', fcmInit()),
-      _loggedTask('notifyInit', notifyInit()),
-    ]);
-    unawaited(Future(() => updateInfoToServer()));
+    await Future.wait([_timed('fcmInit', fcmInit()), _timed('notifyInit', notifyInit())]);
+    unawaited(Future(updateInfoToServer));
     await Preference.instance.setBool('isFirstLaunch', false);
   }
 
-  final overallEndTime = DateTime.now();
-  talker.log(
-    '🚨 總初始化耗時 (runApp 前): ${overallEndTime.difference(overallStartTime).inMilliseconds}ms',
-  );
+  talker.log('🚨 總初始化耗時 (runApp 前): ${overall.elapsedMilliseconds}ms');
 
   runApp(
     I18n(
@@ -141,6 +104,7 @@ void main() async {
       ),
     ),
   );
+
   if (!isFirstLaunch) {
     talker.log('🟢 非首次啟動 → FCM + 通知 為背景初始化');
     unawaited(
@@ -155,46 +119,28 @@ void main() async {
       }),
     );
   }
-  unawaited(CompassService.instance.initialize());
-  final locationInitStart = DateTime.now();
-  talker.log('🚀 啟動 LocationServiceManager ...');
-  final locationFuture = LocationServiceManager.initalize();
 
-  locationFuture
-      .whenComplete(() {
-        final locationInitEnd = DateTime.now();
-        final locationDuration = locationInitEnd.difference(locationInitStart).inMilliseconds;
-        talker.log('✅ LocationServiceManager 完成。耗時: ${locationDuration}ms');
-      })
-      .catchError((e) {
-        talker.error('❌ LocationServiceManager 失敗。錯誤: $e');
-      });
+  unawaited(CompassService.instance.initialize());
+  unawaited(_timed('🚀 LocationServiceManager', LocationServiceManager.initalize()).catchError((_) {}));
 }
 
-const platform = MethodChannel('com.exptech.dpip/shortcut');
-
-Future<String?> getInitialShortcut() async {
+Future<String?> _getInitialShortcut() async {
   try {
-    final result = await platform.invokeMethod<String>('getInitialShortcut');
-    return result;
+    return await _platform.invokeMethod<String>('getInitialShortcut');
   } on PlatformException catch (e, st) {
     talker.error('Failed to get initial shortcut', e, st);
     return null;
   }
 }
 
-Future<T> _loggedTask<T>(String taskName, Future<T> future) async {
-  final start = DateTime.now();
+Future<T> _timed<T>(String name, Future<T> future) async {
+  final sw = Stopwatch()..start();
   try {
     final result = await future;
-    final end = DateTime.now();
-    final duration = end.difference(start).inMilliseconds;
-    talker.log('  [並行] 任務 "$taskName" 完成。耗時: ${duration}ms');
+    talker.log('✅ $name 完成。耗時: ${sw.elapsedMilliseconds}ms');
     return result;
   } catch (e) {
-    final end = DateTime.now();
-    final duration = end.difference(start).inMilliseconds;
-    talker.error('  [並行] 任務 "$taskName" 失敗。耗時: ${duration}ms', e);
+    talker.error('❌ $name 失敗。耗時: ${sw.elapsedMilliseconds}ms', e);
     rethrow;
   }
 }

@@ -59,7 +59,8 @@ class MonitorMapLayerManager extends MapLayerManager {
   static const double kLabelLineHeight = 1.2;
 
   /// Whether data has been received within the last 12 seconds.
-  bool get dataStatus => _dataStatus();
+  bool get dataStatus =>
+      (GlobalProviders.data.currentTime - (_lastDataReceivedTime ?? 0)) < 12000;
 
   /// The most recently measured round-trip latency in milliseconds.
   double get ping => _ping;
@@ -80,6 +81,11 @@ class MonitorMapLayerManager extends MapLayerManager {
   bool _hasActiveEew = false;
   String? _lastEewId;
   int? _lastEewSerial;
+
+  // Cached visibility states - avoid redundant setLayerVisibility platform calls.
+  bool? _lastRtsLayersVisible;
+  bool? _lastIntensityLayersVisible;
+  bool? _lastBoxLayerVisible;
 
   late final String _rtsSourceId = MapSourceIds.rts();
   late final String _rtsLayerId = MapLayerIds.rts();
@@ -106,10 +112,6 @@ class MonitorMapLayerManager extends MapLayerManager {
   }) {
     GlobalProviders.data.setReplayMode(isReplayMode, replayTimestamp);
     _setupBlinkTimer();
-  }
-
-  bool _dataStatus() {
-    return (GlobalProviders.data.currentTime - (_lastDataReceivedTime ?? 0)) < 12000;
   }
 
   /// The timestamp of the most recently processed RTS data packet.
@@ -177,26 +179,18 @@ class MonitorMapLayerManager extends MapLayerManager {
         final hasEew = GlobalProviders.data.activeEew.isNotEmpty;
         final shouldBlinkEpicenter = hasEew;
 
-        // Boxes blinking - only toggle if conditions allow, otherwise hide
-        if (shouldBlinkBoxes) {
-          _isBoxVisible = !_isBoxVisible;
-          await controller.setLayerVisibility(_boxLayerId, _isBoxVisible);
-        } else {
-          _isBoxVisible = false;
-          await controller.setLayerVisibility(_boxLayerId, false);
-        }
-
-        // Epicenter blinking - independent of boxes
-        if (shouldBlinkEpicenter) {
-          _isEpicenterVisible = !_isEpicenterVisible;
-          await controller.setLayerVisibility(
-            _epicenterLayerId,
-            _isEpicenterVisible,
-          );
-        } else {
-          _isEpicenterVisible = false;
-          await controller.setLayerVisibility(_epicenterLayerId, false);
-        }
+        // Boxes blinking - toggle when conditions allow, otherwise hide.
+        // Skip the platform call when state didn't change.
+        final nextBoxVisible = shouldBlinkBoxes && !_isBoxVisible;
+        final nextEpicenterVisible = shouldBlinkEpicenter && !_isEpicenterVisible;
+        await Future.wait([
+          if (nextBoxVisible != _isBoxVisible)
+            controller.setLayerVisibility(_boxLayerId, nextBoxVisible),
+          if (nextEpicenterVisible != _isEpicenterVisible)
+            controller.setLayerVisibility(_epicenterLayerId, nextEpicenterVisible),
+        ]);
+        _isBoxVisible = nextBoxVisible;
+        _isEpicenterVisible = nextEpicenterVisible;
       } catch (e, s) {
         TalkerManager.instance.error(
           'MonitorMapLayerManager._blinkTimer',
@@ -893,53 +887,40 @@ class MonitorMapLayerManager extends MapLayerManager {
       final hasIntensityData = (_cachedIntensityGeoJson?['features'] as List?)?.isNotEmpty ?? false;
       final hasBoxData = (_cachedBoxGeoJson?['features'] as List?)?.isNotEmpty ?? false;
 
+      final rtsVisible = hasRtsData && !hasBox;
+      final intensityVisible = hasIntensityData && hasBox;
+      final boxVisible = hasBoxData && hasBox;
+
       await Future.wait([
         if (hasRtsData && existingSources.contains(_rtsSourceId))
           controller.setGeoJsonSource(_rtsSourceId, _cachedRtsGeoJson!),
         if (hasIntensityData && existingSources.contains(_intensitySourceId))
-          controller.setGeoJsonSource(
-            _intensitySourceId,
-            _cachedIntensityGeoJson!,
-          ),
+          controller.setGeoJsonSource(_intensitySourceId, _cachedIntensityGeoJson!),
         if (hasIntensityData && existingSources.contains(_intensity0SourceId))
-          controller.setGeoJsonSource(
-            _intensity0SourceId,
-            _cachedIntensityGeoJson!,
-          ),
+          controller.setGeoJsonSource(_intensity0SourceId, _cachedIntensityGeoJson!),
         if (hasBoxData && existingSources.contains(_boxSourceId))
           controller.setGeoJsonSource(_boxSourceId, _cachedBoxGeoJson!),
 
-        controller.setLayerVisibility(_rtsLayerId, hasRtsData && !hasBox),
-        controller.setLayerVisibility(
-          '$_rtsLayerId-label-id',
-          hasRtsData && !hasBox,
-        ),
-        controller.setLayerVisibility(
-          '$_rtsLayerId-label-loc',
-          hasRtsData && !hasBox,
-        ),
-        controller.setLayerVisibility(
-          '$_rtsLayerId-label-detail-i',
-          hasRtsData && !hasBox,
-        ),
-        controller.setLayerVisibility(
-          '$_rtsLayerId-label-detail-pga',
-          hasRtsData && !hasBox,
-        ),
-        controller.setLayerVisibility(
-          '$_rtsLayerId-label-detail-pgv',
-          hasRtsData && !hasBox,
-        ),
-        controller.setLayerVisibility(
-          _intensityLayerId,
-          hasIntensityData && hasBox,
-        ),
-        controller.setLayerVisibility(
-          _intensity0LayerId,
-          hasIntensityData && hasBox,
-        ),
-        controller.setLayerVisibility(_boxLayerId, hasBoxData && hasBox),
+        // RTS layers share visibility - skip the 6 platform calls if unchanged.
+        if (rtsVisible != _lastRtsLayersVisible) ...[
+          controller.setLayerVisibility(_rtsLayerId, rtsVisible),
+          controller.setLayerVisibility('$_rtsLayerId-label-id', rtsVisible),
+          controller.setLayerVisibility('$_rtsLayerId-label-loc', rtsVisible),
+          controller.setLayerVisibility('$_rtsLayerId-label-detail-i', rtsVisible),
+          controller.setLayerVisibility('$_rtsLayerId-label-detail-pga', rtsVisible),
+          controller.setLayerVisibility('$_rtsLayerId-label-detail-pgv', rtsVisible),
+        ],
+        if (intensityVisible != _lastIntensityLayersVisible) ...[
+          controller.setLayerVisibility(_intensityLayerId, intensityVisible),
+          controller.setLayerVisibility(_intensity0LayerId, intensityVisible),
+        ],
+        if (boxVisible != _lastBoxLayerVisible)
+          controller.setLayerVisibility(_boxLayerId, boxVisible),
       ]);
+
+      _lastRtsLayersVisible = rtsVisible;
+      _lastIntensityLayersVisible = intensityVisible;
+      _lastBoxLayerVisible = boxVisible;
     } catch (e, s) {
       TalkerManager.instance.error(
         'MonitorMapLayerManager._updateRtsFromCache',
@@ -1190,6 +1171,12 @@ class MonitorMapLayerManager extends MapLayerManager {
     }
 
     didSetup = false;
+    // Reset cached visibility so the next setup re-applies it.
+    _lastRtsLayersVisible = null;
+    _lastIntensityLayersVisible = null;
+    _lastBoxLayerVisible = null;
+    _isBoxVisible = true;
+    _isEpicenterVisible = true;
   }
 
   @override

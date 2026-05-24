@@ -195,7 +195,7 @@ class _SunArcPainter extends CustomPainter {
     final fullPath = _buildSinePath(pi, width, cy, peakHeight);
 
     // Sky gradient: fills the dome under the arc.
-    final skyPath = _buildSinePath(pi, width, cy, peakHeight)
+    final skyPath = Path.from(fullPath)
       ..lineTo(width, cy)
       ..lineTo(0, cy)
       ..close();

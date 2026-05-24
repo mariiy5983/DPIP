@@ -206,9 +206,7 @@ class _SettingsDonatePageState extends State<SettingsDonatePage>
     final isProcessing = processingProductId == product.id;
     final isPurchased = purchasedProductIds.contains(product.id);
 
-    final title = product.title.contains('(')
-        ? product.title.substring(0, product.title.indexOf('(')).trim()
-        : product.title;
+    final title = product.title.split('(').first.trim();
 
     return AnimatedBuilder(
       animation: _shimmerController,
@@ -400,9 +398,7 @@ class _SettingsDonatePageState extends State<SettingsDonatePage>
     final isDisabled = processingProductId != null && processingProductId != product.id;
     final isProcessing = processingProductId == product.id;
 
-    final title = product.title.contains('(')
-        ? product.title.substring(0, product.title.indexOf('(')).trim()
-        : product.title;
+    final title = product.title.split('(').first.trim();
 
     return Container(
       margin: const .symmetric(horizontal: 16, vertical: 6),

@@ -48,7 +48,7 @@ class _SettingsLocaleSelectPageState extends State<SettingsLocaleSelectPage>
 
   Result<List<CrowdinLocalizationProgress>, String>? progress;
   List<Locale> localeList = I18n.supportedLocales
-      .where((e) => !['zh'].contains(e.toLanguageTag()))
+      .where((e) => e.toLanguageTag() != 'zh')
       .toList();
 
   Future<void> _refresh() async {

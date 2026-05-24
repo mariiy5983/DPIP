@@ -73,6 +73,7 @@ class DateTimelineItem extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: .circular(16)),
       elevation: 8,
       items: availableModes.map((m) {
+        final isSelected = mode == m;
         return PopupMenuItem<HomeMode>(
           value: m,
           child: Row(
@@ -81,13 +82,13 @@ class DateTimelineItem extends StatelessWidget {
               Icon(
                 m.icon,
                 size: 20,
-                color: mode == m ? context.colors.primary : context.colors.onSurfaceVariant,
+                color: isSelected ? context.colors.primary : context.colors.onSurfaceVariant,
               ),
               Text(
                 m.label,
                 style: context.texts.bodyMedium?.copyWith(
-                  color: mode == m ? context.colors.primary : context.colors.onSurface,
-                  fontWeight: mode == m ? .bold : .normal,
+                  color: isSelected ? context.colors.primary : context.colors.onSurface,
+                  fontWeight: isSelected ? .bold : .normal,
                 ),
               ),
             ],

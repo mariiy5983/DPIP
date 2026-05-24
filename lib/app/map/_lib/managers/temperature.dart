@@ -163,10 +163,9 @@ class TemperatureMapLayerManager extends MapLayerManager {
       final sourceId = MapSourceIds.temperature(time);
       final layerId = MapLayerIds.temperature(time);
 
-      final isSourceExists = (await controller.getSourceIds()).contains(
-        sourceId,
-      );
-      final isLayerExists = (await controller.getLayerIds()).contains(layerId);
+      final ids = await Future.wait([controller.getSourceIds(), controller.getLayerIds()]);
+      final isSourceExists = ids[0].contains(sourceId);
+      final isLayerExists = ids[1].contains(layerId);
 
       if (!isSourceExists) {
         late final List<WeatherStation> weatherData;
@@ -263,7 +262,7 @@ class TemperatureMapLayerManager extends MapLayerManager {
           textHaloColor: colors.outlineVariant.toHexStringRGB(),
           textHaloWidth: 1,
           textFont: ['Noto Sans TC Bold'],
-          textOffset: [0, kLabelBaseOffset + kLabelLineHeight * 1],
+          textOffset: [0, kLabelBaseOffset + kLabelLineHeight],
           textAnchor: 'top',
           textAllowOverlap: true,
           textIgnorePlacement: true,
@@ -307,9 +306,11 @@ class TemperatureMapLayerManager extends MapLayerManager {
     final layerId = MapLayerIds.temperature(currentTemperatureTime.value);
 
     try {
-      await controller.setLayerVisibility(layerId, false);
-      await controller.setLayerVisibility('$layerId-label-name', false);
-      await controller.setLayerVisibility('$layerId-label-value', false);
+      await Future.wait([
+        controller.setLayerVisibility(layerId, false),
+        controller.setLayerVisibility('$layerId-label-name', false),
+        controller.setLayerVisibility('$layerId-label-value', false),
+      ]);
 
       visible = false;
     } catch (e, s) {
@@ -324,9 +325,11 @@ class TemperatureMapLayerManager extends MapLayerManager {
     final layerId = MapLayerIds.temperature(currentTemperatureTime.value);
 
     try {
-      await controller.setLayerVisibility(layerId, true);
-      await controller.setLayerVisibility('$layerId-label-name', true);
-      await controller.setLayerVisibility('$layerId-label-value', true);
+      await Future.wait([
+        controller.setLayerVisibility(layerId, true),
+        controller.setLayerVisibility('$layerId-label-name', true),
+        controller.setLayerVisibility('$layerId-label-value', true),
+      ]);
 
       await _focus();
 

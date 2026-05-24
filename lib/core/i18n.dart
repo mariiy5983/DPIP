@@ -44,8 +44,7 @@ class I18nCsvLoader {
       final translations = values.skip(1).toList();
 
       result[key] = {
-        for (final langCode in languageCodes)
-          langCode: translations[languageCodes.indexOf(langCode)],
+        for (var i = 0; i < languageCodes.length; i++) languageCodes[i]: translations[i],
       };
     }
 

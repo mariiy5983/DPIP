@@ -120,10 +120,9 @@ class WindMapLayerManager extends MapLayerManager {
       final sourceId = MapSourceIds.wind(time);
       final layerId = MapLayerIds.wind(time);
 
-      final isSourceExists = (await controller.getSourceIds()).contains(
-        sourceId,
-      );
-      final isLayerExists = (await controller.getLayerIds()).contains(layerId);
+      final ids = await Future.wait([controller.getSourceIds(), controller.getLayerIds()]);
+      final isSourceExists = ids[0].contains(sourceId);
+      final isLayerExists = ids[1].contains(layerId);
 
       if (!isSourceExists) {
         late final List<WeatherStation> weatherData;
@@ -196,7 +195,7 @@ class WindMapLayerManager extends MapLayerManager {
           textHaloColor: colors.outlineVariant.toHexStringRGB(),
           textHaloWidth: 1,
           textFont: ['Noto Sans TC Bold'],
-          textOffset: [0, kLabelBaseOffset + kLabelLineHeight * 1],
+          textOffset: [0, kLabelBaseOffset + kLabelLineHeight],
           textAnchor: 'top',
           textAllowOverlap: true,
           textIgnorePlacement: true,
@@ -239,13 +238,12 @@ class WindMapLayerManager extends MapLayerManager {
 
     final layerId = MapLayerIds.wind(currentWindTime.value);
 
-    final nameLayerId = '$layerId-label-name';
-    final valueLayerId = '$layerId-label-value';
-
     try {
-      await controller.setLayerVisibility(layerId, false);
-      await controller.setLayerVisibility(nameLayerId, false);
-      await controller.setLayerVisibility(valueLayerId, false);
+      await Future.wait([
+        controller.setLayerVisibility(layerId, false),
+        controller.setLayerVisibility('$layerId-label-name', false),
+        controller.setLayerVisibility('$layerId-label-value', false),
+      ]);
 
       visible = false;
     } catch (e, s) {
@@ -259,13 +257,12 @@ class WindMapLayerManager extends MapLayerManager {
 
     final layerId = MapLayerIds.wind(currentWindTime.value);
 
-    final nameLayerId = '$layerId-label-name';
-    final valueLayerId = '$layerId-label-value';
-
     try {
-      await controller.setLayerVisibility(layerId, true);
-      await controller.setLayerVisibility(nameLayerId, true);
-      await controller.setLayerVisibility(valueLayerId, true);
+      await Future.wait([
+        controller.setLayerVisibility(layerId, true),
+        controller.setLayerVisibility('$layerId-label-name', true),
+        controller.setLayerVisibility('$layerId-label-value', true),
+      ]);
 
       visible = true;
 

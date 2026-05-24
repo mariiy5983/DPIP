@@ -98,6 +98,8 @@ bool isValidLayerCombination(Set<MapLayer> layers) {
   return false;
 }
 
+String _scopedId(String base, String? suffix) => suffix == null ? base : '$base-$suffix';
+
 /// Provides stable MapLibre GeoJSON source ID strings for each data type.
 ///
 /// Pass an optional time or code suffix to obtain a time-specific ID,
@@ -106,35 +108,34 @@ class MapSourceIds {
   const MapSourceIds._();
 
   /// Returns the source ID for radar data, optionally scoped to [time].
-  static String radar([String? time]) => time == null ? 'radar' : 'radar-$time';
+  static String radar([String? time]) => _scopedId('radar', time);
 
   /// Returns the source ID for earthquake report data, optionally scoped to
   /// [time].
-  static String report([String? time]) => time == null ? 'report' : 'report-$time';
+  static String report([String? time]) => _scopedId('report', time);
 
   /// Returns the source ID for tsunami data, optionally scoped to [code].
-  static String tsunami([String? code]) => code == null ? 'tsunami' : 'tsunami-$code';
+  static String tsunami([String? code]) => _scopedId('tsunami', code);
 
   /// Returns the source ID for real-time seismograph (RTS) data, optionally
   /// scoped to [time].
-  static String rts([String? time]) => time == null ? 'rts' : 'rts-$time';
+  static String rts([String? time]) => _scopedId('rts', time);
 
   /// Returns the source ID for EEW data, optionally scoped to [code].
-  static String eew([String? code]) => code == null ? 'eew' : 'eew-$code';
+  static String eew([String? code]) => _scopedId('eew', code);
 
   /// Returns the source ID for temperature data, optionally scoped to [time].
-  static String temperature([String? time]) => time == null ? 'temperature' : 'temperature-$time';
+  static String temperature([String? time]) => _scopedId('temperature', time);
 
   /// Returns the source ID for precipitation data, optionally scoped to
   /// [time].
-  static String precipitation([String? time]) =>
-      time == null ? 'precipitation' : 'precipitation-$time';
+  static String precipitation([String? time]) => _scopedId('precipitation', time);
 
   /// Returns the source ID for wind data, optionally scoped to [time].
-  static String wind([String? time]) => time == null ? 'wind' : 'wind-$time';
+  static String wind([String? time]) => _scopedId('wind', time);
 
   /// Returns the source ID for lightning data, optionally scoped to [time].
-  static String lightning([String? time]) => time == null ? 'lightning' : 'lightning-$time';
+  static String lightning([String? time]) => _scopedId('lightning', time);
 
   /// Returns the source ID for seismic intensity polygon data.
   static String intensity() => 'intensity';
@@ -154,34 +155,33 @@ class MapLayerIds {
   const MapLayerIds._();
 
   /// Returns the layer ID for radar data, optionally scoped to [time].
-  static String radar([String? time]) => time == null ? 'radar' : 'radar-$time';
+  static String radar([String? time]) => _scopedId('radar', time);
 
   /// Returns the layer ID for earthquake report data, optionally scoped to
   /// [time].
-  static String report([String? time]) => time == null ? 'report' : 'report-$time';
+  static String report([String? time]) => _scopedId('report', time);
 
   /// Returns the layer ID for tsunami data, optionally scoped to [code].
-  static String tsunami([String? code]) => code == null ? 'tsunami' : 'tsunami-$code';
+  static String tsunami([String? code]) => _scopedId('tsunami', code);
 
   /// Returns the layer ID for real-time seismograph (RTS) data, optionally
   /// scoped to [time].
-  static String rts([String? time]) => time == null ? 'rts' : 'rts-$time';
+  static String rts([String? time]) => _scopedId('rts', time);
 
   /// Returns the layer ID for EEW data, optionally scoped to [code].
-  static String eew([String? code]) => code == null ? 'eew' : 'eew-$code';
+  static String eew([String? code]) => _scopedId('eew', code);
 
   /// Returns the layer ID for temperature data, optionally scoped to [time].
-  static String temperature([String? time]) => time == null ? 'temperature' : 'temperature-$time';
+  static String temperature([String? time]) => _scopedId('temperature', time);
 
   /// Returns the layer ID for precipitation data, optionally scoped to [time].
-  static String precipitation([String? time]) =>
-      time == null ? 'precipitation' : 'precipitation-$time';
+  static String precipitation([String? time]) => _scopedId('precipitation', time);
 
   /// Returns the layer ID for wind data, optionally scoped to [time].
-  static String wind([String? time]) => time == null ? 'wind' : 'wind-$time';
+  static String wind([String? time]) => _scopedId('wind', time);
 
   /// Returns the layer ID for lightning data, optionally scoped to [time].
-  static String lightning([String? time]) => time == null ? 'lightning' : 'lightning-$time';
+  static String lightning([String? time]) => _scopedId('lightning', time);
 
   /// Returns the layer ID for seismic intensity polygon data.
   static String intensity() => 'intensity';
@@ -197,15 +197,12 @@ class MapLayerIds {
 ///
 /// Preserves layers listed in [BaseMapLayerIds.values] and the `map` source.
 Future<void> cleanupMap(MapLibreMapController controller) async {
-  final layerIds = (await controller.getLayerIds()).cast<String>()
-    ..removeWhere((v) => BaseMapLayerIds.values().contains(v));
-  final sourceIds = (await controller.getSourceIds())..removeWhere((v) => v == 'map');
+  final ids = await Future.wait([controller.getLayerIds(), controller.getSourceIds()]);
+  final baseLayers = BaseMapLayerIds.values().toSet();
+  final layerIds = ids[0].cast<String>().where((v) => !baseLayers.contains(v));
+  final sourceIds = ids[1].cast<String>().where((v) => v != 'map');
 
-  for (final layerId in layerIds) {
-    await controller.removeLayer(layerId);
-  }
-
-  for (final sourceId in sourceIds) {
-    await controller.removeSource(sourceId);
-  }
+  // Layers must be removed before their sources.
+  await Future.wait(layerIds.map(controller.removeLayer));
+  await Future.wait(sourceIds.map(controller.removeSource));
 }

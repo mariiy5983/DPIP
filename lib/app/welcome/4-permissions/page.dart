@@ -31,8 +31,6 @@ class WelcomePermissionPage extends StatefulWidget {
 
 class _WelcomePermissionPageState extends State<WelcomePermissionPage> with WidgetsBindingObserver {
   late Future<List<Permission>> _permissionsFuture;
-  late Future<bool> _autoStartPermission;
-  bool _autoStartStatus = false;
   bool _isRequestingPermission = false;
   bool _isNotificationPermission = false;
 
@@ -46,43 +44,26 @@ class _WelcomePermissionPageState extends State<WelcomePermissionPage> with Widg
   }
 
   Future<List<Permission>> _initializePermissions() async {
-    final deviceInfo = DeviceInfoPlugin();
     List<Permission> permissions = [];
 
     try {
-      final PermissionStatus status = await Permission.location.status;
-      if (status.isGranted) {
-        if (Platform.isAndroid) {
-          final androidInfo = await deviceInfo.androidInfo;
-          permissions = [
-            Permission.notification,
-            Permission.locationAlways,
-            if (androidInfo.version.sdkInt <= 28) Permission.storage,
-            Permission.ignoreBatteryOptimizations,
-          ];
-        } else if (Platform.isIOS) {
-          permissions = [
-            Permission.notification,
-            Permission.locationAlways,
-            Permission.photosAddOnly,
-          ];
-        }
-      } else {
-        if (Platform.isAndroid) {
-          final androidInfo = await deviceInfo.androidInfo;
-          permissions = [
-            Permission.notification,
-            Permission.location,
-            if (androidInfo.version.sdkInt <= 28) Permission.storage,
-            Permission.ignoreBatteryOptimizations,
-          ];
-        } else if (Platform.isIOS) {
-          permissions = [
-            Permission.notification,
-            Permission.location,
-            Permission.photosAddOnly,
-          ];
-        }
+      final status = await Permission.location.status;
+      final locationPermission = status.isGranted ? Permission.locationAlways : Permission.location;
+
+      if (Platform.isAndroid) {
+        final androidInfo = await DeviceInfoPlugin().androidInfo;
+        permissions = [
+          Permission.notification,
+          locationPermission,
+          if (androidInfo.version.sdkInt <= 28) Permission.storage,
+          Permission.ignoreBatteryOptimizations,
+        ];
+      } else if (Platform.isIOS) {
+        permissions = [
+          Permission.notification,
+          locationPermission,
+          Permission.photosAddOnly,
+        ];
       }
 
       await _checkNotificationPermission();

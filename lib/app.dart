@@ -38,61 +38,49 @@ class DpipApp extends StatefulWidget {
 class _DpipAppState extends State<DpipApp> with WidgetsBindingObserver {
   bool _hasHandledInitialShortcut = false;
 
+  Future<void> _checkNotificationPermission() async {
+    if (Platform.isAndroid) return;
+    await fcmReadyCompleter.future;
+    final status = (await FirebaseMessaging.instance.getNotificationSettings()).authorizationStatus;
+    final allowed = status == .authorized || status == .provisional;
+
+    if (Preference.isFirstLaunch || allowed) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && router.routerDelegate.navigatorKey.currentContext != null) {
+        const WelcomePermissionsRoute().go(context);
+      }
+    });
+  }
+
   Future<void> _checkUpdate() async {
-    if (kDebugMode) return;
+    if (kDebugMode || !Platform.isAndroid) return;
 
     try {
-      if (Platform.isAndroid) {
-        final info = await InAppUpdate.checkForUpdate();
+      final info = await InAppUpdate.checkForUpdate();
+      if (info.updateAvailability != UpdateAvailability.updateAvailable) return;
 
-        if (info.updateAvailability != UpdateAvailability.updateAvailable) return;
-
-        if (info.immediateUpdateAllowed) {
-          InAppUpdate.performImmediateUpdate();
-        } else if (info.flexibleUpdateAllowed) {
-          final updateResult = await InAppUpdate.startFlexibleUpdate();
-
-          if (updateResult != AppUpdateResult.success) return;
-
-          InAppUpdate.completeFlexibleUpdate();
-        }
+      if (info.immediateUpdateAllowed) {
+        InAppUpdate.performImmediateUpdate();
+      } else if (info.flexibleUpdateAllowed) {
+        final updateResult = await InAppUpdate.startFlexibleUpdate();
+        if (updateResult != AppUpdateResult.success) return;
+        InAppUpdate.completeFlexibleUpdate();
       }
     } catch (e, s) {
       TalkerManager.instance.error('_DpipState._checkUpdate', e, s);
     }
   }
 
-  Future<void> _checkNotificationPermission() async {
-    if (Platform.isAndroid) return;
-    await fcmReadyCompleter.future;
-    bool notificationAllowed = false;
-    final settings = await FirebaseMessaging.instance.getNotificationSettings();
-    notificationAllowed =
-        settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional;
-
-    if (!Preference.isFirstLaunch && !notificationAllowed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final ctx = router.routerDelegate.navigatorKey.currentContext;
-        if (ctx != null && mounted) {
-          WelcomePermissionsRoute().go(context);
-        }
-      });
-    }
-  }
-
   void _tryHandleInitialShortcut() {
     if (_hasHandledInitialShortcut) return;
     if (widget.initialShortcut == null) return;
-
-    final ctx = router.routerDelegate.navigatorKey.currentContext;
-    if (ctx == null) return;
+    if (router.routerDelegate.navigatorKey.currentContext == null) return;
 
     _hasHandledInitialShortcut = true;
 
-    switch (widget.initialShortcut) {
-      case 'monitor':
-        MapRoute(layers: MapLayer.monitor.name).push(context);
-        break;
+    if (widget.initialShortcut == 'monitor') {
+      MapRoute(layers: MapLayer.monitor.name).push(context);
     }
   }
 
@@ -111,9 +99,10 @@ class _DpipAppState extends State<DpipApp> with WidgetsBindingObserver {
     _checkNotificationPermission();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        handlePendingNotificationNavigation(context);
-      });
+      Future.delayed(
+        const Duration(milliseconds: 500),
+        () => handlePendingNotificationNavigation(context),
+      );
       _tryHandleInitialShortcut();
     });
   }
@@ -135,45 +124,18 @@ class _DpipAppState extends State<DpipApp> with WidgetsBindingObserver {
               shape: RoundedRectangleBorder(borderRadius: .circular(16)),
             );
 
-            ThemeData lightTheme = .new(
-              colorSchemeSeed: model.themeColor ?? lightDynamic?.primary,
-              brightness: .light,
-              snackBarTheme: const .new(behavior: .floating),
-              pageTransitionsTheme: kZoomPageTransitionsTheme,
-              cardTheme: cardTheme,
-              switchTheme: switchTheme,
-              // TODO(kamiya4047): Opt-in to new Material 3 update, remove this after it becomes the default option
-              sliderTheme: const .new(year2023: false),
-              progressIndicatorTheme: const .new(year2023: false),
-            );
-            ThemeData darkTheme = .new(
-              colorSchemeSeed: model.themeColor ?? darkDynamic?.primary,
-              brightness: .dark,
-              snackBarTheme: const .new(behavior: .floating),
-              pageTransitionsTheme: kZoomPageTransitionsTheme,
-              cardTheme: cardTheme,
-              switchTheme: switchTheme,
-              // TODO(kamiya4047): Opt-in to new Material 3 update, remove this after it becomes the default option
-              sliderTheme: const .new(year2023: false),
-              progressIndicatorTheme: const .new(year2023: false),
-            );
-
             final notoFallback = switch (I18n.locale.toLanguageTag()) {
               'zh-Hans' => GoogleFonts.notoSansSc().fontFamily!,
               'ja' => GoogleFonts.notoSansJp().fontFamily!,
               'ko' => GoogleFonts.notoSansKr().fontFamily!,
-              'vi' => GoogleFonts.notoSans().fontFamily!,
-              'ru' => GoogleFonts.notoSans().fontFamily!,
+              'vi' || 'ru' => GoogleFonts.notoSans().fontFamily!,
               _ => GoogleFonts.notoSansTc().fontFamily!,
             };
 
-            TextStyle applyFlex(TextStyle? base) {
-              final style = base ?? const TextStyle();
-              return style.copyWith(
-                fontFamily: 'Google Sans Flex',
-                fontFamilyFallback: [...?style.fontFamilyFallback, notoFallback],
-              );
-            }
+            TextStyle applyFlex(TextStyle? base) => (base ?? const TextStyle()).copyWith(
+              fontFamily: 'Google Sans Flex',
+              fontFamilyFallback: [...?base?.fontFamilyFallback, notoFallback],
+            );
 
             TextTheme buildTextTheme(TextTheme base) => base.copyWith(
               displayLarge: applyFlex(base.displayLarge),
@@ -193,24 +155,36 @@ class _DpipAppState extends State<DpipApp> with WidgetsBindingObserver {
               labelSmall: applyFlex(base.labelSmall),
             );
 
-            lightTheme = lightTheme.copyWith(textTheme: buildTextTheme(lightTheme.textTheme));
-            darkTheme = darkTheme.copyWith(textTheme: buildTextTheme(darkTheme.textTheme));
+            ThemeData buildTheme(Brightness brightness, Color? seed) {
+              final ThemeData base = .new(
+                colorSchemeSeed: seed,
+                brightness: brightness,
+                snackBarTheme: const .new(behavior: .floating),
+                pageTransitionsTheme: kZoomPageTransitionsTheme,
+                cardTheme: cardTheme,
+                switchTheme: switchTheme,
+                // TODO(kamiya4047): Opt-in to new Material 3 update, remove this after it becomes the default option
+                sliderTheme: const .new(year2023: false),
+                progressIndicatorTheme: const .new(year2023: false),
+              );
+              return base.copyWith(textTheme: buildTextTheme(base.textTheme));
+            }
+
+            final seed = model.themeColor;
 
             return MaterialApp.router(
               builder: (context, child) {
-                final mediaQueryData = MediaQuery.of(context);
-                final scale = mediaQueryData.textScaler.clamp(
-                  minScaleFactor: 0.5,
-                  maxScaleFactor: 1.2,
-                );
+                final mq = MediaQuery.of(context);
                 return MediaQuery(
-                  data: mediaQueryData.copyWith(textScaler: scale),
+                  data: mq.copyWith(
+                    textScaler: mq.textScaler.clamp(minScaleFactor: 0.5, maxScaleFactor: 1.2),
+                  ),
                   child: child!,
                 );
               },
               title: 'DPIP',
-              theme: lightTheme,
-              darkTheme: darkTheme,
+              theme: buildTheme(.light, seed ?? lightDynamic?.primary),
+              darkTheme: buildTheme(.dark, seed ?? darkDynamic?.primary),
               themeMode: model.themeMode,
               localizationsDelegates: I18n.localizationsDelegates,
               supportedLocales: I18n.supportedLocales,

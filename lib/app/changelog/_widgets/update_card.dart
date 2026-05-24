@@ -30,6 +30,8 @@ class UpdateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = context.theme.primaryColor;
+    final bodyMedium = context.texts.bodyMedium;
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(
@@ -41,10 +43,7 @@ class UpdateCard extends StatelessWidget {
           gradient: LinearGradient(
             begin: .topLeft,
             end: .bottomRight,
-            colors: [
-              context.theme.primaryColor.withValues(alpha: 0.1),
-              context.theme.primaryColor.withValues(alpha: 0.3),
-            ],
+            colors: [primary.withValues(alpha: 0.1), primary.withValues(alpha: 0.3)],
           ),
         ),
         child: Padding(
@@ -58,17 +57,13 @@ class UpdateCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          Icons.new_releases,
-                          size: 28,
-                          color: context.theme.primaryColor,
-                        ),
+                        Icon(Icons.new_releases, size: 28, color: primary),
                         const SizedBox(width: 10),
                         Text(
                           title,
                           style: context.texts.titleLarge?.copyWith(
                             fontWeight: .bold,
-                            color: context.theme.primaryColor,
+                            color: primary,
                           ),
                         ),
                       ],
@@ -76,8 +71,8 @@ class UpdateCard extends StatelessWidget {
                     const SizedBox(height: 12),
                     Text(
                       description,
-                      style: context.texts.bodyMedium?.copyWith(
-                        color: context.texts.bodyMedium?.color?.withValues(alpha: 0.8),
+                      style: bodyMedium?.copyWith(
+                        color: bodyMedium.color?.withValues(alpha: 0.8),
                       ),
                     ),
                   ],
