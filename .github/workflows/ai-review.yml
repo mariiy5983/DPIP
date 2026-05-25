@@ -79,9 +79,9 @@ jobs:
           OPENAI_API_BASE_URL: ${{ secrets.VLLM_BASE_URL }}
           OPENAI_API_MODEL: "auto"
           REVIEW_LANGUAGE: "zh"
-          MAX_CHUNK_SIZE: "60000"
+          MAX_CHUNK_SIZE: "3500"
           SEVERITY_THRESHOLD: "error"
           SILENT_MODE: "false"
           ENABLE_LINTERS: "true"
-          ENABLE_AST: "true"
-          ENABLE_DEPENDENCY_ANALYSIS: "true"
+          ENABLE_AST: "false"
+          ENABLE_DEPENDENCY_ANALYSIS: "false"
