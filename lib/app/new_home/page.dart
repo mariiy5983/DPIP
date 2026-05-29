@@ -3,16 +3,21 @@ library;
 
 import 'package:dpip/app/new_home/_models/home_model.dart';
 import 'package:dpip/app/new_home/_models/weather_params.dart';
+import 'package:dpip/app/new_home/_widgets/assistant_hint.dart';
+import 'package:dpip/app/new_home/_widgets/day_cycle.dart';
 import 'package:dpip/app/new_home/_widgets/eew_alert.dart';
 import 'package:dpip/app/new_home/_widgets/events_timeline.dart';
+import 'package:dpip/app/new_home/_widgets/forecast.dart';
 import 'package:dpip/app/new_home/_widgets/greeting.dart';
 import 'package:dpip/app/new_home/_widgets/location_chip.dart';
 import 'package:dpip/app/new_home/_widgets/radar.dart';
+import 'package:dpip/app/new_home/_widgets/station_info.dart';
 import 'package:dpip/app/new_home/_widgets/temperature.dart';
 import 'package:dpip/app/new_home/_widgets/thunderstorm_alert.dart';
 import 'package:dpip/app/new_home/_widgets/weather.dart';
 import 'package:dpip/app/new_home/_widgets/weather_background.dart';
 import 'package:dpip/app/new_home/_widgets/weather_particles.dart';
+import 'package:dpip/app/new_home/_widgets/wind.dart';
 import 'package:dpip/models/settings/location.dart';
 import 'package:dpip/utils/extensions/build_context.dart';
 import 'package:dpip/utils/extensions/color.dart';
@@ -101,6 +106,13 @@ class _NewHomePageState extends State<NewHomePage> {
                       // Weather hero.
                       Temperature(),
                       Weather(),
+                      SizedBox(height: 16),
+                      // Detail cards.
+                      AssistantHint(),
+                      StationInfo(),
+                      Forecast(),
+                      Wind(),
+                      DayCycle(),
                       SizedBox(height: 16),
                       // Radar preview - 1 tap to full map.
                       Radar(),
